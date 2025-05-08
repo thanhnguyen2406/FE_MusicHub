@@ -1,0 +1,81 @@
+# .cursorrules
+
+name: React + Tailwind CSS Best Practices
+
+files:
+  - "**/*.tsx"
+  - "**/*.ts"
+  - "**/*.jsx"
+  - "**/*.js"
+  - "**/*.css"
+  - "**/*.html"
+
+rules:
+
+  - title: Prefer functional components with hooks
+    appliesTo: "*.jsx, *.tsx"
+    description: Always use functional components with hooks instead of class-based components.
+    pattern: "class\\s+\\w+\\s+extends\\s+React\\.Component"
+    action: reject
+
+  - title: Use Tailwind utility classes, avoid custom CSS when possible
+    appliesTo: "*.jsx, *.tsx"
+    description: Encourage using Tailwind utility classes instead of writing custom CSS unless necessary.
+    pattern: "\\.className\\s*=\\s*\"[^\"]*\\{[^\"]*\\}\""
+    action: warn
+
+  - title: Enforce semantic HTML
+    appliesTo: "*.jsx, *.tsx"
+    description: Promote accessibility by preferring semantic HTML elements (e.g., <button>, <nav>, <main>) over <div>s.
+    pattern: "<div\\s+.*(onClick|role=)"
+    action: warn
+
+  - title: Ensure responsive design using Tailwind responsive utilities
+    appliesTo: "*.jsx, *.tsx"
+    description: Use responsive classes like sm:, md:, lg: rather than hardcoded widths or heights.
+    pattern: "style=\\{\\s*\\{\\s*(width|height)"
+    action: warn
+
+  - title: Avoid inline styles except for dynamic or critical styles
+    appliesTo: "*.jsx, *.tsx"
+    pattern: "style=\\{[^}]+\\}"
+    action: warn
+
+  - title: Keep components small and focused
+    appliesTo: "*.jsx, *.tsx"
+    description: Flag components that are too long (>100 lines).
+    pattern: "^.{0,}\\n(?:.*\\n){100,}"
+    action: warn
+
+  - title: Use Tailwind `@apply` for reuse in component-level styling
+    appliesTo: "*.css, *.scss"
+    description: Avoid duplicating Tailwind utility classes when they can be grouped with @apply.
+    pattern: "\\.\\w+\\s*\\{[^}]*\\}"
+    action: suggest
+
+  - title: Validate alt text on all images
+    appliesTo: "*.jsx, *.tsx"
+    description: Ensure all <img> tags include descriptive alt attributes.
+    pattern: "<img\\s+((?!alt=).)*>"
+    action: warn
+
+  - title: Use ESLint + Prettier for formatting and linting
+    appliesTo: "*"
+    description: Ensure files conform to linting and code formatting rules.
+    action: enforce # Cursor should reformat or report formatting issues.
+
+  - title: Avoid hardcoded color values; use Tailwind color classes
+    appliesTo: "*.jsx, *.tsx, *.css"
+    pattern: "#[0-9a-fA-F]{3,6}"
+    action: warn
+
+  - title: Do not use `any` type in TypeScript
+    appliesTo: "*.ts, *.tsx"
+    pattern: ":\\s*any"
+    action: reject
+
+  - title: Avoid unnecessary DOM nesting
+    appliesTo: "*.jsx, *.tsx"
+    description: Avoid deeply nested div structures.
+    pattern: "(<div>\\s*){4,}"
+    action: warn

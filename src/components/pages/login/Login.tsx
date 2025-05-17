@@ -10,11 +10,9 @@ const Login: React.FC = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const { handleLogin, loading } = useLogin();
-  const [loginSuccess, setLoginSuccess] = useState(false);
 
   const onSubmit = async () => {
-    const success = await handleLogin(email, password);
-    setLoginSuccess(success);
+    await handleLogin(email, password);
   };
 
   return (

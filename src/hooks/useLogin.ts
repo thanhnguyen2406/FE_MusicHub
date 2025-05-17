@@ -1,4 +1,4 @@
-import { useDispatch, useSelector } from 'react-redux';
+import { useDispatch } from 'react-redux';
 import type { AppDispatch } from '../redux/store';
 import { login } from '../redux/slices/authSlicer';
 import { toast } from 'react-toastify';

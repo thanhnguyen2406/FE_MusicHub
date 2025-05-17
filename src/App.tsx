@@ -7,15 +7,17 @@ function AppContent() {
   const location = useLocation();
   const isChannelPage = location.pathname === '/channels';
   const isLoginPage = location.pathname === '/login';
+  const isRegisterPage = location.pathname === '/register';
+  const isProfilePage = location.pathname === '/profile';
 
   return (
     <div className="app-container min-h-screen flex flex-col" style={{ height: '100vh' }}>
-      {!isLoginPage && <Header />}
+      {!isLoginPage && !isRegisterPage && <Header />}
       {/* Main content: Routes */}
       <main className="main-content flex-1 bg-[#111]">
         <Outlet />
       </main>
-      {!isChannelPage && !isLoginPage && <Footer />}
+      {!isChannelPage && !isLoginPage && !isRegisterPage && !isProfilePage && <Footer />}
     </div>
   );
 }

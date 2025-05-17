@@ -22,8 +22,8 @@ const Header: React.FC = () => {
       <div className="header-right flex gap-2 min-w-[180px] justify-end">
         {isHomePage ? (
           <>
-            <Link to="/login" className="login-btn bg-white text-gray-800 border-none rounded-full px-4 py-1 font-medium mr-2 cursor-pointer">Login</Link>
-            <button className="register-btn bg-red-600 text-white border-none rounded-full px-4 py-1 font-medium cursor-pointer">Register</button>
+            <Link to="/login" className="login-btn bg-white text-gray-800 border-none rounded-full px-4 py-1 font-medium mr-2 cursor-pointer">Log in</Link>
+            <Link to="/register" className="register-btn bg-red-600 text-white border-none rounded-full px-4 py-1 font-medium cursor-pointer">Sign up</Link>
           </>
         ) : (
           <div className="w-full" />

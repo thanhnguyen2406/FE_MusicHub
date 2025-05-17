@@ -1,6 +1,6 @@
 import ReactDOM from 'react-dom/client'
 import { createBrowserRouter, RouterProvider } from 'react-router-dom'
-import React from 'react'
+import React, { Profiler } from 'react'
 import { Provider } from 'react-redux'
 import { store } from './redux/store'
 
@@ -10,6 +10,8 @@ import Channel from './components/pages/channel/Channel.tsx'
 import Home from './components/pages/home/Home.tsx'
 import Search from './components/pages/search/Search.tsx'
 import Login from './components/pages/login/Login.tsx'
+import Register from './components/pages/register/Register.tsx'
+import Profile from './components/pages/profile/Profile.tsx'
 
 const router = createBrowserRouter([
   {
@@ -35,6 +37,14 @@ const router = createBrowserRouter([
       {
         path: 'login',
         element: <Login />,
+      },
+      {
+        path: 'register',
+        element: <Register />,
+      },
+      {
+        path: 'profile',
+        element: <Profile />,
       },
     ],
   },

@@ -32,17 +32,19 @@ const Song: React.FC<SongProps> = ({
   onDislike
 }) => {
   return (
-    <li className="flex items-center bg-[#111] rounded-2xl px-5 py-5 mb-6 min-h-[96px] relative
+    <li className="flex items-center bg-[#111] rounded-2xl px-5 py-5 mb-6 relative
       transition-all duration-300 ease-in-out hover:bg-gray-700 hover:rounded-3xl animate-fadeIn">
       {/* Index number */}
       <div className="absolute -left-8 text-white text-xl font-bold opacity-70 transition-opacity duration-300 group-hover:opacity-100">
         {index}
       </div>
+      
       {/* Song image */}
       <img src={image} alt={title} className="w-16 h-16 rounded-full object-cover bg-[#222] mr-4 
         transition-transform duration-300 hover:scale-110" />
-      {/* Song info and mood tags */}
-      <div className="flex-1 min-w-0 flex flex-col justify-center">
+      
+      {/* Song info */}
+      <div className="flex-1 min-w-0 mr-4">
         <div className="text-white text-lg font-bold truncate text-left transition-colors duration-300 hover:text-blue-400">{title}</div>
         <div className="text-gray-300 text-base truncate text-left transition-colors duration-300 hover:text-gray-100">{artist}</div>
         <div className="flex gap-2 mt-2">
@@ -52,14 +54,15 @@ const Song: React.FC<SongProps> = ({
           ))}
         </div>
       </div>
-      {/* Duration (static position, large) */}
-      <div className="w-24 flex-shrink-0 flex items-center justify-end mr-6">
+
+      {/* Duration */}
+      <div className="w-24 flex-shrink-0 flex items-center justify-center mr-6">
         <span className="text-white text-xl font-bold transition-opacity duration-300 hover:opacity-80">{duration}</span>
       </div>
+
       {/* Like/Dislike */}
-      <div className="flex items-center gap-2 mx-2">
+      <div className="flex items-center gap-2">
         {liked ? (
-          // Filled up arrow
           <ArrowUpCircleSolid
             className="w-10 h-10 text-white cursor-pointer transition-transform duration-300 hover:scale-110 active:scale-90"
             onClick={onLike}
@@ -69,7 +72,6 @@ const Song: React.FC<SongProps> = ({
             onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') onLike && onLike(); }}
           />
         ) : (
-          // Outlined up arrow
           <ArrowUpCircleOutline
             className="w-10 h-10 text-white cursor-pointer transition-transform duration-300 hover:scale-110 active:scale-90"
             onClick={onLike}
@@ -79,9 +81,8 @@ const Song: React.FC<SongProps> = ({
             onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') onLike && onLike(); }}
           />
         )}
-        <span className="text-white text-sm transition-opacity duration-300 hover:opacity-80">{likes}</span>
+        <span className="text-white text-sm transition-opacity duration-300 hover:opacity-80 w-7">{likes}</span>
         {disliked ? (
-          // Filled down arrow
           <ArrowDownCircleSolid
             className="w-10 h-10 text-white cursor-pointer transition-transform duration-300 hover:scale-110 active:scale-90"
             onClick={onDislike}
@@ -91,7 +92,6 @@ const Song: React.FC<SongProps> = ({
             onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') onDislike && onDislike(); }}
           />
         ) : (
-          // Outlined down arrow
           <ArrowDownCircleOutline
             className="w-10 h-10 text-white cursor-pointer transition-transform duration-300 hover:scale-110 active:scale-90"
             onClick={onDislike}
@@ -101,7 +101,7 @@ const Song: React.FC<SongProps> = ({
             onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') onDislike && onDislike(); }}
           />
         )}
-        <span className="text-white text-sm transition-opacity duration-300 hover:opacity-80">{dislikes}</span>
+        <span className="text-white text-sm transition-opacity duration-300 hover:opacity-80 w-7">{dislikes}</span>
       </div>
     </li>
   );

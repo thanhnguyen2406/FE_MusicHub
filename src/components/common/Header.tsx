@@ -6,7 +6,10 @@ const Header: React.FC = () => {
   const isHomePage = location.pathname === '/';
 
   return (
-    <header className="header bg-gray-400 px-[2vw] py-1 flex items-center justify-between w-full">
+    <header
+      className="header bg-gray-400 px-[2vw] py-1 flex items-center justify-between w-full"
+      style={{ height: '5%' }}
+    >
       <div className="logo flex items-center font-bold text-lg text-white">
         <span className="logo-icon mr-2 text-xl">🎵</span> MoodMix
       </div>
@@ -19,7 +22,7 @@ const Header: React.FC = () => {
       <div className="header-right flex gap-2 min-w-[180px] justify-end">
         {isHomePage ? (
           <>
-            <button className="login-btn bg-white text-gray-800 border-none rounded-full px-4 py-1 font-medium mr-2 cursor-pointer">Login</button>
+            <Link to="/login" className="login-btn bg-white text-gray-800 border-none rounded-full px-4 py-1 font-medium mr-2 cursor-pointer">Login</Link>
             <button className="register-btn bg-red-600 text-white border-none rounded-full px-4 py-1 font-medium cursor-pointer">Register</button>
           </>
         ) : (

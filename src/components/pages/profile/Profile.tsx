@@ -1,9 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
+import { toast } from 'react-toastify';
 import { fetchUserInfo } from '../../../redux/slices/userSlicer';
 import type { AppDispatch, RootState } from '../../../redux/store';
+import { useUpdateUser } from '../../../hooks/useUpdateUser';
+import { useGetMyInfo } from '../../../hooks/useGetMyInfo';
 
 interface UserProfileData {
+  id: string;
   email: string;
   firstName: string;
   lastName: string;
@@ -15,26 +19,19 @@ interface UserProfileData {
 const Profile: React.FC = () => {
   const dispatch = useDispatch<AppDispatch>();
   const accessToken = useSelector((state: RootState) => state.auth.tokens?.access_token);
-  const reduxUser = useSelector((state: RootState) => state.user.user);
+  const { user, loading: userLoading } = useGetMyInfo();
+  const { handleUpdateUser, loading: updateLoading } = useUpdateUser();
 
-  const [user, setUser] = useState<UserProfileData | null>(null);
   const [editedUser, setEditedUser] = useState<UserProfileData | null>(null);
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
   const [avatarPreview, setAvatarPreview] = useState<string | undefined>(undefined);
 
   useEffect(() => {
-    if (typeof accessToken === 'string' && accessToken) {
-      dispatch(fetchUserInfo(accessToken));
+    if (user) {
+      setEditedUser(user);
+      setAvatarPreview(user.avatarUrl || '/assets/default-avatar.png');
     }
-  }, [accessToken, dispatch]);
-
-  useEffect(() => {
-    if (reduxUser) {
-      setUser(reduxUser);
-      setEditedUser(reduxUser);
-      setAvatarPreview(reduxUser.avatarUrl || '/assets/default-avatar.png');
-    }
-  }, [reduxUser]);
+  }, [user]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -52,26 +49,35 @@ const Profile: React.FC = () => {
   };
 
   const handleSave = async () => {
-    if (!editedUser) return;
-
-    const formData = new FormData();
-    formData.append('firstName', editedUser.firstName);
-    formData.append('lastName', editedUser.lastName);
-    formData.append('displayName', editedUser.displayName);
-    if (avatarFile) {
-      formData.append('avatar', avatarFile);
+    if (!editedUser || !user || !accessToken) return;
+  
+    try {
+      const success = await handleUpdateUser({
+        id: user.id,
+        firstName: editedUser.firstName,
+        lastName: editedUser.lastName,
+        displayName: editedUser.displayName,
+        avatar: avatarFile || undefined, 
+      });
+  
+      if (success) {
+        console.log("Update successful");
+        await dispatch(fetchUserInfo(accessToken)); 
+        setAvatarFile(null);
+        setAvatarPreview(user.avatarUrl || '/assets/default-avatar.png');
+      } else {
+        console.error("Update failed");
+      }
+    } catch (error) {
+      console.error("Error in handleSave:", error);
+      toast.error('Failed to save changes', { position: 'top-right' });
     }
-
-    if (typeof accessToken === 'string' && accessToken) {
-      dispatch(fetchUserInfo(accessToken));
-    }
-    setAvatarFile(null);
   };
 
   const handleCancel = () => {
     if (user) {
       setEditedUser(user);
-      setAvatarPreview(user.avatarUrl);
+      setAvatarPreview(user.avatarUrl || '/assets/default-avatar.png');
       setAvatarFile(null);
     }
   };
@@ -82,9 +88,11 @@ const Profile: React.FC = () => {
     (user.firstName !== editedUser.firstName ||
       user.lastName !== editedUser.lastName ||
       user.displayName !== editedUser.displayName ||
-      avatarPreview !== user.avatarUrl);
+      avatarPreview !== (user.avatarUrl || '/assets/default-avatar.png'));
 
-  if (!editedUser) return <div className="text-white p-10">Loading profile...</div>;
+  console.log({userLoading});
+  console.log({editedUser});
+  if (!editedUser || userLoading) return <div className="text-white p-10">Loading profile...</div>;
 
   return (
     <div className="min-h-screen bg-[#181818] flex flex-col items-center justify-center py-10">
@@ -94,9 +102,13 @@ const Profile: React.FC = () => {
           <div className="flex flex-row items-center gap-6">
             <div className="relative group cursor-pointer">
               <img
-                src={avatarPreview || '/default-avatar.png'}
+                src={avatarPreview || '/assets/default-avatar.png'}
                 alt="Avatar"
                 className="w-24 h-24 rounded-full object-cover border-4 border-[#282828] shadow"
+                onError={(e) => {
+                  const target = e.target as HTMLImageElement;
+                  target.src = '/assets/default-avatar.png';
+                }}
               />
               <label className="absolute bottom-0 right-0 bg-white p-1 rounded-full cursor-pointer">
                 <input type="file" accept="image/*" onChange={handleAvatarChange} className="hidden" />
@@ -117,14 +129,14 @@ const Profile: React.FC = () => {
                   ? 'bg-orange-500 text-white hover:bg-orange-600'
                   : 'bg-[#333] text-gray-500 cursor-not-allowed'
               }`}
-              disabled={!isChanged}
+              disabled={!isChanged || updateLoading}
               onClick={handleSave}
             >
-              Save Changes
+              {updateLoading ? 'Saving...' : 'Save Changes'}
             </button>
             <button
               className="px-6 py-2 rounded-lg font-semibold bg-[#222] text-gray-300 hover:bg-[#333] transition"
-              disabled={!isChanged}
+              disabled={!isChanged || updateLoading}
               onClick={handleCancel}
             >
               Cancel

@@ -30,20 +30,20 @@ const Login: React.FC = () => {
           <img src={logoUrl} alt="MoodMix Logo" className="w-20 h-20 rounded-lg object-cover shadow-md" />
           <h1 className="text-4xl font-bold text-white text-center">MoodMix</h1>
         </div>
-        <p className="text-lg text-gray-300 mb-8 text-center">Music Platform</p>
+        <p className="text-lg text-white mb-8 text-center">Music Platform</p>
         <input
           type="email"
           placeholder="Email"
           value={email}
           onChange={e => setEmail(e.target.value)}
-          className="mb-4 w-72 px-4 py-3 rounded-full border border-gray-300 focus:outline-none focus:ring-2 focus:ring-white-400"
+          className="mb-4 w-72 px-4 py-3 rounded-full border text-white border-gray-300 focus:outline-none focus:ring-2 focus:ring-white-400"
         />
         <input
           type="password"
           placeholder="Password"
           value={password}
           onChange={e => setPassword(e.target.value)}
-          className="mb-6 w-72 px-4 py-3 rounded-full border border-gray-300 focus:outline-none focus:ring-2 focus:ring-white-400"
+          className="mb-6 w-72 px-4 py-3 rounded-full border text-white border-gray-300 focus:outline-none focus:ring-2 focus:ring-white-400"
         />
         <div className="flex flex-row w-72 gap-4">
           <button

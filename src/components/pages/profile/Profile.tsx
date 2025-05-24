@@ -1,37 +1,24 @@
 import React, { useState, useEffect } from 'react';
-import { useDispatch, useSelector } from 'react-redux';
 import { toast } from 'react-toastify';
-import { fetchUserInfo } from '../../../redux/slices/userSlicer';
-import type { AppDispatch, RootState } from '../../../redux/store';
-import { useUpdateUser } from '../../../hooks/useUpdateUser';
-import { useGetMyInfo } from '../../../hooks/useGetMyInfo';
-
-interface UserProfileData {
-  id: string;
-  email: string;
-  firstName: string;
-  lastName: string;
-  createdAt: string;
-  displayName: string;
-  avatarUrl?: string;
-}
+import { useGetMyInfoQuery, useUpdateUserMutation } from '../../../redux/services/userApi';
+import type { UserInfo } from '../../../redux/services/userApi';
+import defaultAvatar from '../../../assets/defaultAvatar.png';
+import emailIcon from '../../../assets/email.svg';
 
 const Profile: React.FC = () => {
-  const dispatch = useDispatch<AppDispatch>();
-  const accessToken = useSelector((state: RootState) => state.auth.tokens?.access_token);
-  const { user, loading: userLoading } = useGetMyInfo();
-  const { handleUpdateUser, loading: updateLoading } = useUpdateUser();
+  const { data: userResponse, isLoading: userLoading } = useGetMyInfoQuery();
+  const [updateUser, { isLoading: updateLoading }] = useUpdateUserMutation();
 
-  const [editedUser, setEditedUser] = useState<UserProfileData | null>(null);
+  const [editedUser, setEditedUser] = useState<UserInfo | null>(null);
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
   const [avatarPreview, setAvatarPreview] = useState<string | undefined>(undefined);
 
   useEffect(() => {
-    if (user) {
-      setEditedUser(user);
-      setAvatarPreview(user.avatarUrl || '/assets/default-avatar.png');
+    if (userResponse?.data) {
+      setEditedUser(userResponse.data);
+      setAvatarPreview(userResponse.data.avatarUrl || defaultAvatar);
     }
-  }, [user]);
+  }, [userResponse]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -49,24 +36,20 @@ const Profile: React.FC = () => {
   };
 
   const handleSave = async () => {
-    if (!editedUser || !user || !accessToken) return;
+    if (!editedUser || !userResponse?.data) return;
   
     try {
-      const success = await handleUpdateUser({
-        id: user.id,
+      const success = await updateUser({
+        id: userResponse.data.id,
         firstName: editedUser.firstName,
         lastName: editedUser.lastName,
         displayName: editedUser.displayName,
         avatar: avatarFile || undefined, 
-      });
+      }).unwrap();
   
       if (success) {
-        console.log("Update successful");
-        await dispatch(fetchUserInfo(accessToken)); 
         setAvatarFile(null);
-        setAvatarPreview(user.avatarUrl || '/assets/default-avatar.png');
-      } else {
-        console.error("Update failed");
+        setAvatarPreview(userResponse.data.avatarUrl || defaultAvatar);
       }
     } catch (error) {
       console.error("Error in handleSave:", error);
@@ -75,23 +58,21 @@ const Profile: React.FC = () => {
   };
 
   const handleCancel = () => {
-    if (user) {
-      setEditedUser(user);
-      setAvatarPreview(user.avatarUrl || '/assets/default-avatar.png');
+    if (userResponse?.data) {
+      setEditedUser(userResponse.data);
+      setAvatarPreview(userResponse.data.avatarUrl || defaultAvatar);
       setAvatarFile(null);
     }
   };
 
   const isChanged =
-    user &&
+    userResponse?.data &&
     editedUser &&
-    (user.firstName !== editedUser.firstName ||
-      user.lastName !== editedUser.lastName ||
-      user.displayName !== editedUser.displayName ||
-      avatarPreview !== (user.avatarUrl || '/assets/default-avatar.png'));
+    (userResponse.data.firstName !== editedUser.firstName ||
+      userResponse.data.lastName !== editedUser.lastName ||
+      userResponse.data.displayName !== editedUser.displayName ||
+      avatarPreview !== (userResponse.data.avatarUrl || defaultAvatar));
 
-  console.log({userLoading});
-  console.log({editedUser});
   if (!editedUser || userLoading) return <div className="text-white p-10">Loading profile...</div>;
 
   return (
@@ -101,18 +82,17 @@ const Profile: React.FC = () => {
         <div className="flex flex-row items-center justify-between">
           <div className="flex flex-row items-center gap-6">
             <div className="relative group cursor-pointer">
-              <img
-                src={avatarPreview || '/assets/default-avatar.png'}
-                alt="Avatar"
-                className="w-24 h-24 rounded-full object-cover border-4 border-[#282828] shadow"
-                onError={(e) => {
-                  const target = e.target as HTMLImageElement;
-                  target.src = '/assets/default-avatar.png';
-                }}
-              />
-              <label className="absolute bottom-0 right-0 bg-white p-1 rounded-full cursor-pointer">
+              <label>
+                <img
+                  src={avatarPreview || defaultAvatar}
+                  alt="Avatar"
+                  className="w-24 h-24 rounded-full object-cover border-4 border-[#282828] shadow cursor-pointer"
+                  onError={(e) => {
+                    const target = e.target as HTMLImageElement;
+                    target.src = defaultAvatar;
+                  }}
+                />
                 <input type="file" accept="image/*" onChange={handleAvatarChange} className="hidden" />
-                <img src="/icons/camera.svg" className="w-4 h-4" alt="Change avatar" />
               </label>
             </div>
             <div className="text-left">
@@ -183,7 +163,7 @@ const Profile: React.FC = () => {
         {/* Email Display */}
         <div className="flex flex-row items-center gap-3 mt-8">
           <div className="bg-gray-700 rounded-full p-3">
-            <img src="/assets/email.svg" alt="Email" className="w-6 h-6" />
+            <img src={emailIcon} alt="Email" className="w-6 h-6" />
           </div>
           <div className="text-white">{editedUser.email}</div>
         </div>

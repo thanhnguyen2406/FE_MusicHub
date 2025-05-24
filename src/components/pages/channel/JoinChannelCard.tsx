@@ -1,24 +1,25 @@
 import React, { useState } from 'react';
-import { FaMusic, FaShareAlt } from 'react-icons/fa';
+import { FaMusic, FaShareAlt, FaLock, FaLockOpen } from 'react-icons/fa';
 
 interface JoinChannelCardProps {
   channelId: number;
   name: string;
+  url: string;
   moodTags: string[];
   membersCount: number;
   maxUsers: number;
   description: string;
   ownerAvatar: string;
   ownerName: string;
+  locked: boolean;
   onJoin: () => void;
 }
 
-const JoinChannelCard: React.FC<JoinChannelCardProps> = ({ channelId, name, moodTags, membersCount, maxUsers, description, ownerAvatar, ownerName, onJoin }) => {
+const JoinChannelCard: React.FC<JoinChannelCardProps> = ({ channelId, name, url: channelUrl, moodTags, membersCount, maxUsers, description, ownerAvatar, ownerName, locked, onJoin }) => {
   const [copied, setCopied] = useState(false);
 
   const handleShare = () => {
-    const url = `${window.location.origin}/channel/${channelId}`;
-    navigator.clipboard.writeText(url);
+    navigator.clipboard.writeText(channelUrl);
     setCopied(true);
     setTimeout(() => setCopied(false), 1200);
   };
@@ -29,7 +30,7 @@ const JoinChannelCard: React.FC<JoinChannelCardProps> = ({ channelId, name, mood
         <FaMusic className="text-white text-xl" />
       </div>
       <div className="flex-1 flex flex-col justify-center">
-        <div className="font-semibold text-lg text-white text-left mb-0.5">{name}</div>
+        <div className="font-semibold text-lg text-white text-left mb-0.5 ml-0.5">{name}</div>
         <div className="flex gap-2 mb-1 text-left">
           {moodTags.map((tag, idx) => (
             <span
@@ -40,15 +41,17 @@ const JoinChannelCard: React.FC<JoinChannelCardProps> = ({ channelId, name, mood
             </span>
           ))}
         </div>
-        <div className="text-gray-300 text-xs text-left mb-1">{description}</div>
+        <div className="text-gray-300 text-xs text-left mb-1 ml-0.5">{description}</div>
       </div>
       <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 flex items-center z-10">
-        <img src={ownerAvatar} alt="Owner Avatar" className="w-8 h-8 rounded-full shadow" />
+        <img src={ownerAvatar} alt="Owner Avatar" className="w-9 h-9 rounded-full shadow-lg object-cover" />
         <span className="ml-2 text-sm text-gray-200 font-light whitespace-nowrap">{ownerName}</span>
       </div>
       <div className="flex items-center justify-center ml-auto mr-8 relative" style={{ zIndex: 5 }}>
+        <span className="mr-3 text-lg  text-gray-300" title={locked ? 'Private channel' : 'Public channel'}>
+          {locked ? <FaLock /> : <FaLockOpen />}
+        </span>
         <span
-          className="cursor-pointer relative"
           onClick={handleShare}
           title="Share channel"
         >

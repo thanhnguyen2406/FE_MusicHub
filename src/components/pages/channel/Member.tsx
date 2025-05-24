@@ -3,6 +3,7 @@ import React from 'react';
 interface MemberProps {
   name: string;
   avatar: string;
+  role?: 'MEMBER' | 'OWNER';
 }
 
 const Member: React.FC<MemberProps> = ({ name, avatar }) => (

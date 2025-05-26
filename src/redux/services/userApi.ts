@@ -1,6 +1,7 @@
 import { createApi } from '@reduxjs/toolkit/query/react';
-import { baseQueryWithErrorHandling, transformResponse } from './baseApi';
-import type { ResponseAPI } from '../../types/ResponseAPI';
+import { baseQueryWithErrorHandling, transformResponse, API_PATHS } from '../../services/apis';
+import type { ResponseAPI } from '../../utils/apiErrorHandler';
+import { getDefaultHeaders, getAuthHeaders } from '../../utils/apiHeaders';
 
 export interface UserInfo {
   id: string;
@@ -10,6 +11,14 @@ export interface UserInfo {
   createdAt: string;
   displayName: string;
   avatarUrl?: string;
+}
+
+interface RegisterRequest {
+  displayName: string;
+  email: string;
+  firstName: string;
+  lastName: string;
+  password: string;
 }
 
 interface UpdateUserInput {
@@ -25,10 +34,21 @@ export const userApi = createApi({
   baseQuery: baseQueryWithErrorHandling,
   tagTypes: ['User'],
   endpoints: (builder) => ({
+    register: builder.mutation<ResponseAPI<any>, RegisterRequest>({
+      query: (userData) => ({
+        url: `${API_PATHS.USERS}`,
+        method: 'POST',
+        body: userData,
+        headers: getDefaultHeaders(),
+      }),
+      transformResponse,
+    }),
+
     getMyInfo: builder.query<ResponseAPI<UserInfo>, void>({
       query: () => ({
-        url: '/users/my-info',
+        url: `${API_PATHS.USERS}/my-info`,
         method: 'GET',
+        headers: getAuthHeaders(),
       }),
       transformResponse,
       providesTags: ['User'],
@@ -36,9 +56,10 @@ export const userApi = createApi({
 
     updateUser: builder.mutation<ResponseAPI<null>, UpdateUserInput>({
       query: (input) => ({
-        url: '/users',
+        url: `${API_PATHS.USERS}`,
         method: 'PUT',
         body: input,
+        headers: getAuthHeaders(),
       }),
       transformResponse,
       invalidatesTags: ['User'],
@@ -47,6 +68,7 @@ export const userApi = createApi({
 });
 
 export const {
+  useRegisterMutation,
   useGetMyInfoQuery,
   useUpdateUserMutation,
 } = userApi; 

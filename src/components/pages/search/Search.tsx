@@ -1,9 +1,9 @@
 import React, { useState } from 'react';
-import { rsocketService } from '../../../rsocket/rsocketService';
+import { rsocketService } from '../../../rsocket/apis';
 
 async function testRSocket() {
   try {
-    const response = await rsocketService.requestResponse('test', {});
+    const response = await rsocketService.requestResponse("channel.getMyChannel", {});
     console.log('RSocket response:', response);
     return response;
   } catch (error) {

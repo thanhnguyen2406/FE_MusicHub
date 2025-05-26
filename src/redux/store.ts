@@ -3,7 +3,7 @@ import { setupListeners } from '@reduxjs/toolkit/query';
 import { channelApi } from './services/channelApi';
 import { authApi } from './services/authApi';
 import { userApi } from './services/userApi';
-import { enhancedApi } from './services/api';
+import { enhancedApi } from '../services/apis';
 
 export const store = configureStore({
   reducer: {

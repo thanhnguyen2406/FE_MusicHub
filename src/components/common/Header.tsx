@@ -31,10 +31,10 @@ const Header: React.FC = () => {
         <span className="hidden sm:inline">MoodMix</span>
       </div>
       <nav className="nav-links flex gap-4 md:gap-6 justify-center flex-1">
-        <Link to="/" className="text-white no-underline text-base hover:text-yellow-200">Home</Link>
-        <Link to="/channels" className="text-white no-underline text-base hover:text-yellow-200">Channel</Link>
-        <Link to="/search" className="text-white no-underline text-base hover:text-yellow-200">Search</Link>
-        <Link to="/mood" className="text-white no-underline text-base hover:text-yellow-200">Mood</Link>
+        <Link to="/" className="text-white no-underline text-base hover:text-purple-900">Home</Link>
+        <Link to="/channels" className="text-white no-underline text-base hover:text-purple-900">Channel</Link>
+        <Link to="/search" className="text-white no-underline text-base hover:text-purple-900">Search</Link>
+        <Link to="/mood" className="text-white no-underline text-base hover:text-purple-900">Mood</Link>
       </nav>
       <div className="header-right flex gap-2 min-w-[120px] justify-end items-center">
         {hasToken ? (
@@ -54,8 +54,8 @@ const Header: React.FC = () => {
           </>
         ) : (
           <>
-            <Link to="/login" className="login-btn bg-white text-gray-800 border-none rounded-full px-4 py-1 font-medium mr-2 cursor-pointer">Log in</Link>
-            <Link to="/register" className="register-btn bg-red-600 text-white border-none rounded-full px-4 py-1 font-medium cursor-pointer">Sign up</Link>
+            <Link to="/login" className="bg-white text-gray-800 border-none rounded-full px-4 py-1 font-medium mr-2 cursor-pointer">Log in</Link>
+            <Link to="/register" className="bg-purple-700 text-white border-none rounded-full px-4 py-1 font-medium cursor-pointer">Sign up</Link>
           </>
         )}
       </div>

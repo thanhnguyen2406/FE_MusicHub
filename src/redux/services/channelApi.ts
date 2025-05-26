@@ -1,6 +1,9 @@
 import { createApi } from '@reduxjs/toolkit/query/react';
-import { baseQueryWithErrorHandling, transformResponse } from './baseApi';
-import type { ResponseAPI } from '../../types/ResponseAPI';
+import { baseQueryWithErrorHandling, transformResponse, API_PATHS } from '../../services/apis';
+import type { ResponseAPI } from '../../utils/apiErrorHandler';
+import { getAuthHeaders } from '../../utils/apiHeaders';
+import type { PaginationParams } from '../../utils/apiParams';
+import { getPaginationParams } from '../../utils/apiParams';
 
 export interface ChannelMember {
   displayName: string;
@@ -68,49 +71,52 @@ export interface AddChannelRequest {
   locked: boolean;
 }
 
-interface GetChannelsParams {
-  page?: number;
-  size?: number;
-}
-
 export const channelApi = createApi({
   reducerPath: 'channelApi',
   baseQuery: baseQueryWithErrorHandling,
   tagTypes: ['Channel'],
   endpoints: (builder) => ({
-    getChannels: builder.query<ResponseAPI<PaginatedResponse<Channel>>, GetChannelsParams>({
+    getChannels: builder.query<ResponseAPI<PaginatedResponse<Channel>>, PaginationParams>({
       query: (params) => ({
-        url: '/channels',
-        params: {
-          page: params.page ?? 0,
-          size: params.size ?? 10,
-        },
+        url: `${API_PATHS.CHANNELS}`,
+        method: 'GET',
+        params: getPaginationParams(params),
+        headers: getAuthHeaders(),
       }),
       transformResponse,
       providesTags: ['Channel'],
     }),
 
     getChannelById: builder.query<ResponseAPI<ChannelDetails>, string>({
-      query: (channelId) => `/channels/${channelId}`,
-      transformResponse
+      query: (channelId) => ({
+        url: `${API_PATHS.CHANNELS}/${channelId}`,
+        method: 'GET',
+        headers: getAuthHeaders(),
+      }),
+      transformResponse,
+      providesTags: ['Channel'],
     }),
 
     getMyChannel: builder.query<ResponseAPI<string>, void>({
-      query: () => '/channels/my-channel',
+      query: () => ({
+        url: `${API_PATHS.CHANNELS}/my-channel`,
+        method: 'GET',
+        headers: getAuthHeaders(),
+      }),
       transformResponse,
       providesTags: ['Channel'],
     }),
 
     addChannel: builder.mutation<ResponseAPI<String>, AddChannelRequest>({
       query: (channel) => ({
-        url: '/channels',
+        url: `${API_PATHS.CHANNELS}`,
         method: 'POST',
         body: channel,
+        headers: getAuthHeaders(),
       }),
       transformResponse,
       invalidatesTags: ['Channel'],
     }),
-
   }),
 });
 

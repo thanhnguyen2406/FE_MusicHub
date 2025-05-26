@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useMemo } from 'react';
-import JoinableChannels from './JoinableChannels';
-import JoinedChannel from './JoinedChannel';
+import JoinableChannels from './joinable/JoinableChannels';
+import JoinedChannel from './joined/JoinedChannel';
 import songThumbnail from '../../../assets/songThumbnail.jpg';
 import type { ChannelDetails as ApiChannelDetails, ChannelSong } from '../../../redux/services/channelApi';
 

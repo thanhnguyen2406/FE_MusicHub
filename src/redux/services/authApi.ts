@@ -1,6 +1,7 @@
 import { createApi } from '@reduxjs/toolkit/query/react';
-import { baseQueryWithErrorHandling, transformResponse } from './baseApi';
-import type { ResponseAPI } from '../../types/ResponseAPI';
+import { baseQueryWithErrorHandling, transformResponse, API_PATHS } from '../../services/apis';
+import type { ResponseAPI } from '../../utils/apiErrorHandler';
+import { getDefaultHeaders } from '../../utils/apiHeaders';
 
 export interface AuthTokens {
   access_token: string;
@@ -16,14 +17,6 @@ interface LoginRequest {
   password: string;
 }
 
-interface RegisterRequest {
-  displayName: string;
-  email: string;
-  firstName: string;
-  lastName: string;
-  password: string;
-}
-
 export const authApi = createApi({
   reducerPath: 'authApi',
   baseQuery: baseQueryWithErrorHandling,
@@ -31,26 +24,17 @@ export const authApi = createApi({
   endpoints: (builder) => ({
     login: builder.mutation<ResponseAPI<AuthTokens>, LoginRequest>({
       query: (credentials) => ({
-        url: '/auth/login',
+        url: `${API_PATHS.AUTH}/login`,
         method: 'POST',
         body: credentials,
+        headers: getDefaultHeaders(),
       }),
       transformResponse,
       invalidatesTags: ['Auth'],
-    }),
-
-    register: builder.mutation<ResponseAPI<any>, RegisterRequest>({
-      query: (userData) => ({
-        url: '/users',
-        method: 'POST',
-        body: userData,
-      }),
-      transformResponse,
-    }),
+    })
   }),
 });
 
 export const {
-  useLoginMutation,
-  useRegisterMutation,
+  useLoginMutation
 } = authApi; 

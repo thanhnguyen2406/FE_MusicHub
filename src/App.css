@@ -91,18 +91,11 @@ html, body, #root, .app-container {
   transition: color 0.2s;
   padding: 0.2rem 0.3rem;
 }
-.nav-links a:hover {
-  color: #ffe082;
-}
+
 .header-right {
   display: flex;
   gap: 0.4rem;
   flex: 0 0 auto;
-}
-.login-btn, .register-btn {
-  padding: 0.25rem 0.9rem;
-  font-size: 0.98rem;
-  border-radius: 1.2rem;
 }
 
 .main-content {

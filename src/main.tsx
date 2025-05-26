@@ -1,8 +1,9 @@
 import ReactDOM from 'react-dom/client'
 import { createBrowserRouter, RouterProvider } from 'react-router-dom'
-import React, { Profiler } from 'react'
+import React from 'react'
 import { Provider } from 'react-redux'
 import { store } from './redux/store'
+import { Buffer } from 'buffer';
 
 import App from './App.tsx'
 import './index.css'
@@ -12,6 +13,16 @@ import Search from './components/pages/search/Search.tsx'
 import Login from './components/pages/login/Login.tsx'
 import Register from './components/pages/register/Register.tsx'
 import Profile from './components/pages/profile/Profile.tsx'
+
+declare global {
+  interface Window {
+    Buffer: typeof Buffer;
+  }
+}
+
+if (typeof window !== 'undefined' && !window.Buffer) {
+  window.Buffer = Buffer;
+}
 
 const router = createBrowserRouter([
   {

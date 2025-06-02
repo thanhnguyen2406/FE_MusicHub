@@ -9,6 +9,7 @@ export const API_PATHS = {
   AUTH: '/auth',
   USERS: '/users',
   CHANNELS: '/channels',
+  TEST: '/test',
 } as const;
 
 export const baseQuery = fetchBaseQuery({

@@ -1,9 +1,9 @@
 import React from 'react';
 import Song from './Song';
 import Member from './Member';
-import defaultAvatar from '../../../assets/defaultAvatar.png';
-import channelAvatar from '../../../assets/channelAvatar.jpg';
-import type { ChannelMember } from '../../../redux/services/channelApi';
+import defaultAvatar from '../../../../assets/defaultAvatar.png';
+import channelAvatar from '../../../../assets/channelAvatar.jpg';
+import type { ChannelMember } from '../../../../redux/services/channelApi';
 
 interface JoinedChannelProps {
   channel: {

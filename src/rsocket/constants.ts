@@ -1,0 +1,8 @@
+import {
+    MESSAGE_RSOCKET_ROUTING,
+    MESSAGE_RSOCKET_COMPOSITE_METADATA,
+  } from 'rsocket-core';
+  
+  export const RSOCKET_URL = 'ws://localhost:7000/rsocket';
+  export const ROUTING_MIME_TYPE = MESSAGE_RSOCKET_ROUTING;
+  export const COMPOSITE_METADATA = MESSAGE_RSOCKET_COMPOSITE_METADATA;  

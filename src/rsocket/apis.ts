@@ -84,7 +84,7 @@ export const getRSocketConnection = async (): Promise<any> => {
 };
 
 class RSocketService {
-  async requestResponse<T>(route: string, data: string | Record<string, any> | null): Promise<T> {
+  async requestResponse<T>(route: any, data: string | Record<string, any> | null): Promise<T> {
     const rsocket = await getRSocketConnection();
     return new Promise((resolve, reject) => {
       let subscription: any = null;

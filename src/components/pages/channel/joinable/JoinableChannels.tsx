@@ -2,9 +2,9 @@ import React, { useState, useEffect } from 'react';
 import JoinChannelCard from './JoinChannelCard';
 import JoinPopUp from './JoinPopUp';
 import AddChannelPopUp from './AddPopUp';
-import defaultAvatar from '../../../assets/defaultAvatar.png';
-import addIcon from '../../../assets/add.svg';
-import urlIcon from '../../../assets/url.svg';
+import defaultAvatar from '../../../../assets/defaultAvatar.png';
+import addIcon from '../../../../assets/add.svg';
+import urlIcon from '../../../../assets/url.svg';
 
 interface Channel {
   id: string;

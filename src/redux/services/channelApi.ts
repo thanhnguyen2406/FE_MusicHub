@@ -27,15 +27,20 @@ export interface ChannelSong {
 export interface ChannelDetails {
   id: string;
   name: string;
+  ownerId: string;
   url: string;
   tagList: string[];
-  description?: string;
+  description: string;
   maxUsers: number;
   currentUsers: number;
   allowOthersToManageSongs: boolean;
   allowOthersToControlPlayback: boolean;
   isLocked: boolean;
-  members: ChannelMember[];
+  members: Array<{
+    displayName: string;
+    avatarUrl: string | null;
+    role: 'MEMBER' | 'OWNER';
+  }>;
   songs: ChannelSong[];
 }
 
@@ -69,6 +74,16 @@ export interface AddChannelRequest {
   allowOthersToManageSongs: boolean;
   allowOthersToControlPlayback: boolean;
   locked: boolean;
+}
+
+export interface JoinChannelRequest {
+  url: string;
+  password: string;
+}
+
+export interface VoteSongRequest {
+  channelId: string;
+  isUpvote: boolean;
 }
 
 export const channelApi = createApi({
@@ -117,6 +132,74 @@ export const channelApi = createApi({
       transformResponse,
       invalidatesTags: ['Channel'],
     }),
+
+    joinChannel: builder.mutation<ResponseAPI<void>, string>({
+      query: (channelId) => {
+        console.log('joinChannel mutation called with channelId:', channelId);
+        const url = `${API_PATHS.CHANNELS}/${channelId}/join`;
+        console.log('Join channel URL:', url);
+        return {
+          url,
+          method: 'POST',
+          headers: getAuthHeaders(),
+        };
+      },
+      transformResponse,
+      invalidatesTags: ['Channel'],
+    }),
+
+    joinChannelByUrl: builder.mutation<ResponseAPI<{ channelId: string }>, JoinChannelRequest>({
+      query: (request) => ({
+        url: `${API_PATHS.CHANNELS}/join-by-url`,
+        method: 'POST',
+        body: request,
+        headers: getAuthHeaders(),
+      }),
+      transformResponse,
+      invalidatesTags: ['Channel'],
+    }),
+
+    voteSong: builder.mutation<ResponseAPI<void>, { songId: number; request: VoteSongRequest }>({
+      query: ({ songId, request }) => ({
+        url: `${API_PATHS.SONGS}/${songId}/vote`,
+        method: 'POST',
+        body: request,
+        headers: getAuthHeaders(),
+      }),
+      transformResponse,
+      invalidatesTags: ['Channel'],
+    }),
+
+    leaveChannel: builder.mutation<ResponseAPI<void>, string>({
+      query: (channelId) => ({
+        url: `${API_PATHS.CHANNELS}/${channelId}/leave`,
+        method: 'POST',
+        headers: getAuthHeaders(),
+      }),
+      transformResponse,
+      invalidatesTags: ['Channel'],
+    }),
+
+    deleteChannel: builder.mutation<ResponseAPI<void>, string>({
+      query: (channelId) => ({
+        url: `${API_PATHS.CHANNELS}/${channelId}`,
+        method: 'DELETE',
+        headers: getAuthHeaders(),
+      }),
+      transformResponse,
+      invalidatesTags: ['Channel'],
+    }),
+
+    transferOwnership: builder.mutation<ResponseAPI<void>, { channelId: string; newOwnerId: string }>({
+      query: ({ channelId, newOwnerId }) => ({
+        url: `${API_PATHS.CHANNELS}/${channelId}/transfer-ownership`,
+        method: 'POST',
+        body: { newOwnerId },
+        headers: getAuthHeaders(),
+      }),
+      transformResponse,
+      invalidatesTags: ['Channel'],
+    }),
   }),
 });
 
@@ -125,4 +208,10 @@ export const {
   useGetChannelByIdQuery,
   useGetMyChannelQuery,
   useAddChannelMutation,
+  useJoinChannelMutation,
+  useJoinChannelByUrlMutation,
+  useVoteSongMutation,
+  useLeaveChannelMutation,
+  useDeleteChannelMutation,
+  useTransferOwnershipMutation,
 } = channelApi; 

@@ -1,10 +1,13 @@
-import { encodeCompositeMetadata, WellKnownMimeType } from 'rsocket-core';
+import {
+  encodeCompositeMetadata,
+  encodeRoute,
+  WellKnownMimeType,
+} from 'rsocket-core';
 import { getRSocket } from './client';
-import { COMPOSITE_METADATA } from './constants';
-import { Buffer } from 'buffer';
 import { getAuthHeaders } from '../utils/apiHeaders';
 import { createApi } from '@reduxjs/toolkit/query/react';
 import type { BaseQueryFn } from '@reduxjs/toolkit/query';
+import { Buffer } from 'buffer';
 
 interface RSocketPayload<T = any> {
   data: T;
@@ -24,83 +27,58 @@ interface RSocketQueryArgs {
   data: any;
 }
 
-const createRouteBuffer = (route: string): Buffer => {
-  return Buffer.from(route, 'utf8');
-};
+function buildCompositeMetadata(route: string): Uint8Array {
+  const routingMetadata = encodeRoute(route);
+  const token = getAuthHeaders()?.Authorization?.replace('Bearer ', '') ?? '';
+  const authMetadata = Buffer.from(token, 'utf-8'); // ✅ Explicit encoding
 
-const encodeRoutingMetadata = (route: string): Buffer => {
-    const routeBuffer = createRouteBuffer(route);
-    console.log('Route:', route, 'Route buffer:', routeBuffer, 'Length:', routeBuffer.length);
-    const metadataSize = 1 + 2 + routeBuffer.length;
-    const buffer = Buffer.alloc(metadataSize);
-    buffer.writeUInt8(WellKnownMimeType.ROUTING, 0);
-    buffer.writeUInt16BE(routeBuffer.length, 1);
-    routeBuffer.copy(buffer, 3);
-    console.log('Encoded metadata:', buffer);
-    return buffer;
-  };
+  return encodeCompositeMetadata([
+    [WellKnownMimeType.MESSAGE_RSOCKET_ROUTING, routingMetadata], // ✅ Correct WellKnownMimeType
+    [WellKnownMimeType.MESSAGE_RSOCKET_AUTHENTICATION, authMetadata],
+  ]);
+}
 
-export const rsocketBaseQuery = async ({ route, data }: RSocketQueryArgs) => {
+export const rsocketBaseQuery: BaseQueryFn<RSocketQueryArgs, unknown, ErrorResponse> = async ({
+  route,
+  data,
+}) => {
   try {
-    console.log('RSocket base query starting...', { route, data });
     const rsocket = await getRSocket();
-    if (!rsocket) {
-      console.error('RSocket connection failed - no client returned');
-      throw new Error('Failed to establish RSocket connection');
-    }
+    if (!rsocket) throw new Error('No RSocket client');
 
-    console.log('RSocket client obtained, preparing request...');
-    const routingMetadata = Buffer.from(route, 'utf8');
-    const authHeaders = getAuthHeaders();
-    const authMetadata = Buffer.from(JSON.stringify(authHeaders));
-    
-    const metadata = encodeCompositeMetadata([
-      [WellKnownMimeType.ROUTING, routingMetadata],
-      [WellKnownMimeType.APPLICATION_JSON, authMetadata]
-    ]);
+    const metadata = buildCompositeMetadata(route);
 
-    console.log('RSocket request prepared, sending...');
-    return new Promise((resolve, reject) => {
+    return await new Promise((resolve, reject) => {
       rsocket
         .requestResponse({
-          data: { payload: data },
+          data,
           metadata,
-          dataMimeType: 'application/json',
-          metadataMimeType: 'message/x.rsocket.composite-metadata.v0',
         })
         .subscribe({
           onComplete: (payload: RSocketPayload) => {
-            console.log('RSocket response received:', payload);
-            if (!payload || !payload.data) {
-              console.error('Invalid payload received:', payload);
+            if (!payload?.data) {
               reject({ error: 'Invalid response from server' });
               return;
             }
             resolve({ data: payload.data });
           },
-          onError: (error: Error) => {
-            console.error('RSocket request error:', error);
-            reject({ error: error.message || 'RSocket error' });
-          },
+          onError: (error: Error) =>
+            reject({ error: error.message || 'RSocket error' }),
         });
     });
-  } catch (error) {
-    console.error('RSocket base query error:', error);
-    return { 
-      error: error instanceof Error 
-        ? error.message 
-        : 'Failed to connect to RSocket' 
-    };
+  } catch (error: any) {
+    return { error: error?.message || 'RSocket connection failed' };
   }
 };
 
+// RTK Query API
 export const rsocketApi = createApi({
   reducerPath: 'rsocketApi',
-  baseQuery: rsocketBaseQuery as BaseQueryFn<RSocketQueryArgs, unknown, unknown>,
+  baseQuery: rsocketBaseQuery,
   endpoints: (builder) => ({
-    test: builder.query<{ data: string }, void>({
+    test: builder.query<TestResponse, void>({
       query: () => ({
-        route: 'test',
+        route: 'test', // ✅ Will be encoded properly now
         data: null,
       }),
     }),
@@ -109,68 +87,53 @@ export const rsocketApi = createApi({
 
 export const { useTestQuery } = rsocketApi;
 
-export const rsocketRequestResponse = async <T = TestResponse>(route: string, data: any): Promise<T> => {
+// General request-response (outside of RTK Query)
+export async function rsocketRequestResponse<T = unknown>(
+  route: string,
+  data: any
+): Promise<T> {
   const rsocket = await getRSocket();
+  const metadata = buildCompositeMetadata(route);
 
-  const routingMetadata = encodeRoutingMetadata(route);
-  const authHeaders = getAuthHeaders();
-  const authMetadata = Buffer.from(JSON.stringify(authHeaders));
-  
-  const metadata = encodeCompositeMetadata([
-    [WellKnownMimeType.ROUTING, routingMetadata],
-    [WellKnownMimeType.APPLICATION_JSON, authMetadata]
-  ]);
-
-  return new Promise((resolve, reject) => {
+  return await new Promise((resolve, reject) => {
     rsocket
       .requestResponse({
-        data: { payload: data },
+        data,
         metadata,
-        dataMimeType: 'application/json',
-        metadataMimeType: COMPOSITE_METADATA,
       })
       .subscribe({
         onComplete: (payload: RSocketPayload<T | ErrorResponse>) => {
-          const response = payload.data;
-          if ((response as ErrorResponse).error) {
-            reject(response);
+          if ((payload.data as ErrorResponse)?.error) {
+            reject(payload.data);
           } else {
-            resolve(response as T);
+            resolve(payload.data as T);
           }
         },
-        onError: (error: Error) => reject({ error: error.message || 'RSocket error' }),
+        onError: (error: Error) =>
+          reject({ error: error.message || 'RSocket error' }),
       });
   });
-};
+}
 
-export const rsocketRequestStream = async (
+// Stream request (e.g., live data)
+export async function rsocketRequestStream(
   route: string,
   data: any,
   onNext: (data: any) => void,
   onComplete?: () => void,
   onError?: (error: Error) => void
-): Promise<void> => {
+): Promise<void> {
   const rsocket = await getRSocket();
-
-  const routingMetadata = encodeRoutingMetadata(route);
-  const authHeaders = getAuthHeaders();
-  const authMetadata = Buffer.from(JSON.stringify(authHeaders));
-  
-  const metadata = encodeCompositeMetadata([
-    [WellKnownMimeType.ROUTING, routingMetadata],
-    [WellKnownMimeType.APPLICATION_JSON, authMetadata]
-  ]);
+  const metadata = buildCompositeMetadata(route);
 
   rsocket
     .requestStream({
       data,
       metadata,
-      dataMimeType: 'application/json',
-      metadataMimeType: COMPOSITE_METADATA,
     })
     .subscribe({
       onNext: (payload: RSocketPayload) => onNext(payload.data),
       onComplete: onComplete ?? (() => {}),
       onError: onError ?? console.error,
     });
-};
+}

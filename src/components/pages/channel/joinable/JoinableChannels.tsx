@@ -1,62 +1,27 @@
-import React, { useState, useEffect } from 'react';
+import { useState } from 'react';
 import JoinChannelCard from './JoinChannelCard';
 import JoinPopUp from './JoinPopUp';
 import AddChannelPopUp from './AddPopUp';
 import defaultAvatar from '../../../../assets/defaultAvatar.png';
 import addIcon from '../../../../assets/add.svg';
 import urlIcon from '../../../../assets/url.svg';
-
-interface Channel {
-  id: string;
-  name: string;
-  url: string;
-  tagList: string[];
-  description?: string;
-  maxUsers: number;
-  currentUsers: number;
-  ownerDisplayName: string;
-  allowOthersToManageSongs: boolean;
-  allowOthersToControlPlayback: boolean;
-  isLocked: boolean;
-  locked?: boolean;
-}
+import { useGetChannelsQuery, useAddChannelMutation, useJoinChannelByUrlMutation } from '../../../../redux/services/channelApi';
+import type { Channel } from '../../../../redux/services/channelApi';
 
 interface JoinableChannelsProps {
-  onJoinChannel: (channelId: number) => void;
+  onJoinChannel: (channelId: string) => void;
 }
-
-const API_BASE_URL = 'http://localhost:7000/api';
 
 const JoinableChannels: React.FC<JoinableChannelsProps> = ({ onJoinChannel }) => {
   const [page, setPage] = useState<number>(0);
   const [size] = useState<number>(10);
   const [showJoinModal, setShowJoinModal] = useState(false);
   const [showAddModal, setShowAddModal] = useState(false);
-  const [channels, setChannels] = useState<Channel[]>([]);
-  const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
 
-  useEffect(() => {
-    const fetchChannels = async () => {
-      try {
-        setLoading(true);
-        const response = await fetch(`${API_BASE_URL}/channels?page=${page}&size=${size}`, {
-          headers: {
-            'Authorization': `Bearer ${localStorage.getItem('access_token')}`
-          }
-        });
-        const data = await response.json();
-        setChannels(data.content);
-        setError(null);
-      } catch (err) {
-        setError(err instanceof Error ? err : new Error('Failed to fetch channels'));
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchChannels();
-  }, [page, size]);
+  const { data: channelsData, isLoading, error: channelsError } = useGetChannelsQuery({ page, size });
+  const [addChannel] = useAddChannelMutation();
+  const [joinChannelByUrl] = useJoinChannelByUrlMutation();
 
   const handleAddChannel = async (channelData: {
     name: string;
@@ -67,39 +32,25 @@ const JoinableChannels: React.FC<JoinableChannelsProps> = ({ onJoinChannel }) =>
     allowOthersToManageSongs: boolean;
     allowOthersToControlPlayback: boolean;
   }) => {
+    const token = localStorage.getItem('access_token');
+    if (!token) {
+      setError(new Error('Please log in to create a channel'));
+      return;
+    }
+
     try {
-      const response = await fetch(`${API_BASE_URL}/channels`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('access_token')}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          ...channelData,
-          locked: false
-        })
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to create channel');
-      }
-
-      // Refresh channels list
-      const updatedResponse = await fetch(`${API_BASE_URL}/channels?page=${page}&size=${size}`, {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('access_token')}`
-        }
-      });
-      const data = await updatedResponse.json();
-      setChannels(data.content);
+      await addChannel({
+        ...channelData,
+        locked: false
+      }).unwrap();
     } catch (err) {
       console.error('Failed to add channel:', err);
       throw err;
     }
   };
 
-  const transformedChannels = channels.map((channel: Channel) => ({
-    id: parseInt(channel.id),
+  const transformedChannels = (channelsData?.data?.content || []).map((channel: Channel) => ({
+    id: channel.id,
     name: channel.name,
     url: channel.url,
     moodTags: channel.tagList,
@@ -108,10 +59,10 @@ const JoinableChannels: React.FC<JoinableChannelsProps> = ({ onJoinChannel }) =>
     description: channel.description || '',
     ownerAvatar: defaultAvatar,
     ownerName: channel.ownerDisplayName,
-    locked: channel.locked ?? channel.isLocked
+    locked: channel.isLocked
   }));
 
-  const totalPages = Math.ceil(channels.length / size);
+  const totalPages = Math.ceil((channelsData?.data?.totalElements || 0) / size);
 
   const renderPageNumbers = () => {
     const pageNumbers = [];
@@ -141,31 +92,18 @@ const JoinableChannels: React.FC<JoinableChannelsProps> = ({ onJoinChannel }) =>
     return pageNumbers;
   };
 
-  if (loading) {
+  if (isLoading) {
     return <div className="min-h-screen bg-[#111] text-white p-20">Loading...</div>;
   }
 
-  if (error) {
+  if (channelsError || error) {
     return <div className="min-h-screen bg-[#111] text-white p-20">Error loading channels</div>;
   }
 
   const handleJoinChannelByUrl = async (url: string, password: string) => {
     try {
-      const response = await fetch(`${API_BASE_URL}/channels/join-by-url`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('access_token')}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ url, password })
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to join channel');
-      }
-
-      const data = await response.json();
-      onJoinChannel(parseInt(data.channelId));
+      const result = await joinChannelByUrl({ url, password }).unwrap();
+      onJoinChannel(result.data.channelId);
     } catch (err) {
       console.error('Failed to join channel:', err);
       throw err;
@@ -184,10 +122,12 @@ const JoinableChannels: React.FC<JoinableChannelsProps> = ({ onJoinChannel }) =>
         <div className="flex items-center justify-between mb-6">
           <h1 className="text-3xl font-bold">Music Channels</h1>
           <div className="flex gap-3">
-            <button className="bg-white text-black px-5 py-2 rounded-full font-semibold transition hover:bg-gray-200 flex items-center gap-2" onClick={() => setShowAddModal(true)}>
-              <img src={addIcon} alt="Add" className="w-4 h-4" />
-              Add
-            </button>
+            {localStorage.getItem('access_token') && (
+              <button className="bg-white text-black px-5 py-2 rounded-full font-semibold transition hover:bg-gray-200 flex items-center gap-2" onClick={() => setShowAddModal(true)}>
+                <img src={addIcon} alt="Add" className="w-4 h-4" />
+                Add
+              </button>
+            )}
             <button 
               className="bg-white text-black px-5 py-2 rounded-full font-semibold transition hover:bg-gray-200 flex items-center gap-2" 
               onClick={() => setShowJoinModal(true)}

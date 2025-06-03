@@ -1,8 +1,14 @@
-import React, { useEffect, useState, useMemo } from 'react';
+import React, { useEffect, useState } from 'react';
 import JoinableChannels from './joinable/JoinableChannels';
 import JoinedChannel from './joined/JoinedChannel';
 import songThumbnail from '../../../assets/songThumbnail.jpg';
 import type { ChannelDetails as ApiChannelDetails, ChannelSong } from '../../../redux/services/channelApi';
+import { 
+  useGetMyChannelQuery, 
+  useGetChannelByIdQuery,
+  useJoinChannelMutation
+} from '../../../redux/services/channelApi';
+import { useAppSelector } from '../../../redux/store';
 
 interface ChannelMember {
   displayName: string;
@@ -15,6 +21,7 @@ interface ChannelDetails extends Omit<ApiChannelDetails, 'songs'> {
 }
 
 interface CurrentChannel {
+  id: string;
   name: string;
   splashIcon: string;
   moodTags: string[];
@@ -24,7 +31,7 @@ interface CurrentChannel {
   isPrivate: boolean;
   members: ChannelMember[];
   playlist: Array<{
-    id: number;
+    id: string;
     image: string;
     title: string;
     artist: string;
@@ -33,225 +40,135 @@ interface CurrentChannel {
     likes: number;
     dislikes: number;
   }>;
+  isOwner: boolean;
 }
-
-const API_BASE_URL = 'http://localhost:7000/api';
-
-const decodeToken = (token: string) => {
-  try {
-    const base64Url = token.split('.')[1];
-    if (!base64Url) throw new Error('Invalid JWT format');
-    const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
-    const jsonPayload = decodeURIComponent(
-      atob(base64)
-        .split('')
-        .map((c) => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2))
-        .join(''),
-    );
-    const parsed = JSON.parse(jsonPayload);
-    const userId = parsed.sub;
-    if (!userId || typeof userId !== 'string') throw new Error('No valid sub claim in token');
-    return parsed;
-  } catch (error) {
-    console.error('Error decoding token:', error);
-    return null;
-  }
-};
 
 const Channel: React.FC = () => {
   const [hasJoinedChannel, setHasJoinedChannel] = useState(false);
-  const [likedSongs, setLikedSongs] = useState<number[]>([]);
-  const [dislikedSongs, setDislikedSongs] = useState<number[]>([]);
   const [currentChannel, setCurrentChannel] = useState<CurrentChannel | null>(null);
   const [myChannelId, setMyChannelId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const userInfo = useAppSelector(state => state.user.userInfo);
 
-  const userId = useMemo(() => {
-    const accessToken = localStorage.getItem('access_token');
-    if (!accessToken) {
-      console.warn('No access token found in localStorage');
-      return null;
-    }
-    const decodedToken = decodeToken(accessToken);
-    console.log('Decoded token:', decodedToken);
-    return decodedToken?.sub || null;
-  }, []);
+  const token = localStorage.getItem('access_token');
 
-  // Get user's channel
+  const { data: myChannelData, error: myChannelError } = useGetMyChannelQuery(undefined, {
+    skip: !token || !hasJoinedChannel
+  });
+
+  const { data: channelDetails, error: channelDetailsError, refetch: refetchChannel } = useGetChannelByIdQuery(myChannelId || '', {
+    skip: !myChannelId,
+    pollingInterval: 2000
+  });
+
+  const [joinChannel] = useJoinChannelMutation();
+
   useEffect(() => {
-    if (userId && typeof userId === 'string') {
-      fetch(`${API_BASE_URL}/channels/my`, {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('access_token')}`
-        }
-      })
-        .then(response => response.json())
-        .then((channelId: string) => {
-          console.log('Fetched channel ID:', channelId);
-          setMyChannelId(channelId);
-          setHasJoinedChannel(true);
-          setError(null);
-        })
-        .catch((error: Error) => {
-          console.error('Failed to fetch my channel:', error);
-          setError('No channel found. Join or create a channel to continue.');
-        });
-    }
-  }, [userId]);
-
-  // Subscribe to channel updates
-  useEffect(() => {
-    if (!myChannelId) return;
-
-    const fetchChannelData = async () => {
-      try {
-        const response = await fetch(`${API_BASE_URL}/channels/${myChannelId}`, {
-          headers: {
-            'Authorization': `Bearer ${localStorage.getItem('access_token')}`
-          }
-        });
-        const channelData: ChannelDetails = await response.json();
-        
-        setCurrentChannel({
-          name: channelData.name,
-          splashIcon: '',
-          moodTags: channelData.tagList,
-          description: channelData.description || '',
-          canManageSongs: channelData.allowOthersToManageSongs,
-          canPlayback: channelData.allowOthersToControlPlayback,
-          isPrivate: channelData.isLocked,
-          members: channelData.members,
-          playlist: (channelData.songs || []).map((song: ChannelSong) => {
-            const minutes = Math.floor(song.duration / 60);
-            const seconds = song.duration % 60;
-            const formattedDuration = `${minutes}:${seconds.toString().padStart(2, '0')}`;
-            return {
-              id: Number(song.id),
-              image: song.thumbnail || songThumbnail,
-              title: song.title,
-              artist: song.artist,
-              duration: formattedDuration,
-              moodTags: [song.moodTag],
-              likes: song.totalUpVotes,
-              dislikes: song.totalDownVotes,
-            };
-          }),
-        });
-        setError(null);
-      } catch (error) {
-        console.error('Channel fetch error:', error);
-        setError('Failed to receive channel updates. Please try refreshing the page.');
-      }
-    };
-
-    // Initial fetch
-    fetchChannelData();
-
-    // Poll for updates every 5 seconds
-    const intervalId = setInterval(fetchChannelData, 5000);
-
-    return () => {
-      clearInterval(intervalId);
-    };
-  }, [myChannelId]);
-
-  const handleJoinChannel = async (channelId: number) => {
-    try {
-      await fetch(`${API_BASE_URL}/channels/${channelId}/join`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('access_token')}`
-        }
-      });
+    if (myChannelData?.data) {
+      setMyChannelId(myChannelData.data);
       setHasJoinedChannel(true);
-      setMyChannelId(channelId.toString());
       setError(null);
+    } else if (myChannelData === null) {
+      setHasJoinedChannel(false);
+      setMyChannelId(null);
+    }
+  }, [myChannelData]);
+
+  useEffect(() => {
+    if (myChannelError) {
+      console.error('Failed to fetch my channel:', myChannelError);
+      if (!hasJoinedChannel) {
+        setError('No channel found. Join or create a channel to continue.');
+      }
+      setHasJoinedChannel(false);
+    }
+  }, [myChannelError, hasJoinedChannel]);
+
+  useEffect(() => {
+    if (channelDetails?.data) {
+      const isOwner = userInfo?.id === channelDetails.data.ownerId;
+      setCurrentChannel({
+        id: channelDetails.data.id,
+        name: channelDetails.data.name,
+        splashIcon: '',
+        moodTags: channelDetails.data.tagList,
+        description: channelDetails.data.description || '',
+        canManageSongs: channelDetails.data.allowOthersToManageSongs,
+        canPlayback: channelDetails.data.allowOthersToControlPlayback,
+        isPrivate: channelDetails.data.isLocked,
+        members: channelDetails.data.members,
+        isOwner,
+        playlist: (channelDetails.data.songs || []).map((song: ChannelSong) => {
+          const minutes = Math.floor(song.duration / 60);
+          const seconds = song.duration % 60;
+          const formattedDuration = `${minutes}:${seconds.toString().padStart(2, '0')}`;
+          return {
+            id: song.id.toString(),
+            image: song.thumbnail || songThumbnail,
+            title: song.title,
+            artist: song.artist,
+            duration: formattedDuration,
+            moodTags: [song.moodTag],
+            likes: song.totalUpVotes,
+            dislikes: song.totalDownVotes,
+          };
+        }),
+      });
+      setError(null);
+    }
+  }, [channelDetails, userInfo]);
+
+  useEffect(() => {
+    if (channelDetailsError) {
+      console.error('Channel fetch error:', channelDetailsError);
+      setError('Failed to receive channel updates. Please try refreshing the page.');
+    }
+  }, [channelDetailsError]);
+
+  const handleJoinChannel = async (channelId: string) => {
+    try {
+      console.log('Attempting to join channel with ID:', channelId);
+      const result = await joinChannel(channelId).unwrap();
+      console.log('Join channel result:', result);
+      setHasJoinedChannel(true);
+      setMyChannelId(channelId);
+      setError(null);
+      setTimeout(() => {
+        refetchChannel();
+      }, 1000);
     } catch (error) {
       console.error('Failed to join channel:', error);
       setError('Failed to join channel. Please try again.');
+      setHasJoinedChannel(false);
+      setMyChannelId(null);
     }
   };
 
-  const handleLike = async (songId: number) => {
-    if (!myChannelId) return;
-
-    try {
-      await fetch(`${API_BASE_URL}/songs/${songId}/vote`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('access_token')}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          channelId: myChannelId,
-          isUpvote: true
-        })
-      });
-
-      setLikedSongs((prev) => {
-        if (prev.includes(songId)) {
-          return prev.filter((id) => id !== songId);
-        } else {
-          setDislikedSongs((prev) => prev.filter((id) => id !== songId));
-          return [...prev, songId];
-        }
-      });
-    } catch (error) {
-      console.error('Failed to like song:', error);
-    }
+  const handleLeaveChannel = () => {
+    setHasJoinedChannel(false);
+    setMyChannelId(null);
+    setCurrentChannel(null);
   };
 
-  const handleDislike = async (songId: number) => {
-    if (!myChannelId) return;
-
-    try {
-      await fetch(`${API_BASE_URL}/songs/${songId}/vote`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('access_token')}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          channelId: myChannelId,
-          isUpvote: false
-        })
-      });
-
-      setDislikedSongs((prev) => {
-        if (prev.includes(songId)) {
-          return prev.filter((id) => id !== songId);
-        } else {
-          setLikedSongs((prev) => prev.filter((id) => id !== songId));
-          return [...prev, songId];
-        }
-      });
-    } catch (error) {
-      console.error('Failed to dislike song:', error);
-    }
-  };
-
-  if (!userId) {
-    return <div className="min-h-screen bg-[#111] text-white p-20">Please log in to access channels.</div>;
+  if (!token) {
+    return <JoinableChannels onJoinChannel={handleJoinChannel} />;
   }
 
   if (error) {
+    if (
+      error.includes('No channel found') ||
+      error.includes('Join or create a channel')
+    ) {
+      return <JoinableChannels onJoinChannel={handleJoinChannel} />;
+    }
     return (
       <div className="min-h-screen bg-[#111] text-white p-20">
         <p>{error}</p>
-        <button
-          className="mt-4 bg-blue-500 text-white px-4 py-2 rounded"
-          onClick={() => {
-            setError(null);
-            setHasJoinedChannel(false);
-          }}
-        >
-          Join a Channel
-        </button>
       </div>
     );
   }
 
-  if (!hasJoinedChannel) {
+  if (!hasJoinedChannel || !myChannelData?.data) {
     return <JoinableChannels onJoinChannel={handleJoinChannel} />;
   }
 
@@ -263,10 +180,8 @@ const Channel: React.FC = () => {
     <JoinedChannel
       channel={currentChannel}
       playlist={currentChannel.playlist}
-      likedSongs={likedSongs}
-      dislikedSongs={dislikedSongs}
-      onLike={handleLike}
-      onDislike={handleDislike}
+      onSongAdded={refetchChannel}
+      onLeaveChannel={handleLeaveChannel}
     />
   );
 };

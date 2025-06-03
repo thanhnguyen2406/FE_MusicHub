@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { FaMusic, FaShareAlt, FaLock, FaLockOpen } from 'react-icons/fa';
 
 interface JoinChannelCardProps {
-  channelId: number;
+  channelId: string;
   name: string;
   url: string;
   moodTags: string[];

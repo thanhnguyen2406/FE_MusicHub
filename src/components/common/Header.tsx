@@ -2,9 +2,11 @@ import React from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import logo from '../../assets/logo.png';
 import defaultAvatar from '../../assets/defaultAvatar.png';
+import { useAppSelector } from '../../redux/store';
 
 const Header: React.FC = () => {
   const navigate = useNavigate();
+  const userInfo = useAppSelector(state => state.user.userInfo);
 
   const hasToken =
     !!localStorage.getItem('authTokens') ||
@@ -39,12 +41,14 @@ const Header: React.FC = () => {
       <div className="header-right flex gap-2 min-w-[120px] justify-end items-center">
         {hasToken ? (
           <>
-            <img
-              src={defaultAvatar}
-              alt="User Avatar"
-              className="w-10 h-10 rounded-full object-cover cursor-pointer"
-              onClick={() => navigate('/profile')}
-            />
+            <div className="flex items-center gap-2 cursor-pointer" onClick={() => navigate('/profile')}>
+              <img
+                src={defaultAvatar}
+                alt="User Avatar"
+                className="w-10 h-10 rounded-full object-cover"
+              />
+              <span className="text-white font-medium hidden sm:inline">{userInfo?.displayName}</span>
+            </div>
             <button
               className="bg-red-600 text-white border-none rounded-2xl px-4 py-1 font-medium cursor-pointer ml-2 hover:bg-red-700 transition"
               onClick={handleLogout}

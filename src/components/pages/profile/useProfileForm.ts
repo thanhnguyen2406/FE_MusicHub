@@ -3,9 +3,13 @@ import { toast } from 'react-toastify';
 import { useGetMyInfoQuery, useUpdateUserMutation } from '../../../redux/services/userApi';
 import type { UserInfo } from '../../../redux/services/userApi';
 import defaultAvatar from '../../../assets/defaultAvatar.png';
+import { useAppSelector } from '../../../redux/store';
 
 export const useProfileForm = () => {
-  const { data: userResponse, isLoading: userLoading } = useGetMyInfoQuery();
+  const storedUserInfo = useAppSelector(state => state.user.userInfo);
+  const { data: userResponse, isLoading: userLoading } = useGetMyInfoQuery(undefined, {
+    skip: !!storedUserInfo
+  });
   const [updateUser, { isLoading: updateLoading }] = useUpdateUserMutation();
 
   const [editedUser, setEditedUser] = useState<UserInfo | null>(null);
@@ -13,11 +17,12 @@ export const useProfileForm = () => {
   const [avatarPreview, setAvatarPreview] = useState<string | undefined>(undefined);
 
   useEffect(() => {
-    if (userResponse?.data) {
-      setEditedUser(userResponse.data);
-      setAvatarPreview(userResponse.data.avatarUrl || defaultAvatar);
+    const userData = storedUserInfo || userResponse?.data;
+    if (userData) {
+      setEditedUser(userData);
+      setAvatarPreview(userData.avatarUrl || defaultAvatar);
     }
-  }, [userResponse]);
+  }, [storedUserInfo, userResponse]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -57,20 +62,21 @@ export const useProfileForm = () => {
   };
 
   const handleCancel = () => {
-    if (userResponse?.data) {
-      setEditedUser(userResponse.data);
-      setAvatarPreview(userResponse.data.avatarUrl || defaultAvatar);
+    const userData = storedUserInfo || userResponse?.data;
+    if (userData) {
+      setEditedUser(userData);
+      setAvatarPreview(userData.avatarUrl || defaultAvatar);
       setAvatarFile(null);
     }
   };
 
   const isChanged = Boolean(
-    userResponse?.data &&
+    (storedUserInfo || userResponse?.data) &&
     editedUser &&
-    (userResponse.data.firstName !== editedUser.firstName ||
-      userResponse.data.lastName !== editedUser.lastName ||
-      userResponse.data.displayName !== editedUser.displayName ||
-      avatarPreview !== (userResponse.data.avatarUrl || defaultAvatar))
+    ((storedUserInfo || userResponse?.data)?.firstName !== editedUser.firstName ||
+      (storedUserInfo || userResponse?.data)?.lastName !== editedUser.lastName ||
+      (storedUserInfo || userResponse?.data)?.displayName !== editedUser.displayName ||
+      avatarPreview !== ((storedUserInfo || userResponse?.data)?.avatarUrl || defaultAvatar))
   );
 
   return {

@@ -1,6 +1,6 @@
-import React from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { ArrowUpCircleIcon as ArrowUpCircleSolid, ArrowDownCircleIcon as ArrowDownCircleSolid } from '@heroicons/react/24/solid';
-import { ArrowUpCircleIcon as ArrowUpCircleOutline, ArrowDownCircleIcon as ArrowDownCircleOutline } from '@heroicons/react/24/outline';
+import { ArrowUpCircleIcon as ArrowUpCircleOutline, ArrowDownCircleIcon as ArrowDownCircleOutline, EllipsisVerticalIcon } from '@heroicons/react/24/outline';
 
 interface SongProps {
   index: number;
@@ -15,6 +15,10 @@ interface SongProps {
   disliked?: boolean;
   onLike?: () => void;
   onDislike?: () => void;
+  isOwner?: boolean;
+  onPause?: () => void;
+  onSkip?: () => void;
+  onDelete?: () => void;
 }
 
 const Song: React.FC<SongProps> = ({
@@ -29,8 +33,31 @@ const Song: React.FC<SongProps> = ({
   liked = false,
   disliked = false,
   onLike,
-  onDislike
+  onDislike,
+  isOwner = false,
+  onPause,
+  onSkip,
+  onDelete
 }) => {
+  const [menuOpen, setMenuOpen] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
+        setMenuOpen(false);
+      }
+    }
+    if (menuOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+    } else {
+      document.removeEventListener('mousedown', handleClickOutside);
+    }
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [menuOpen]);
+
   return (
     <li className="flex items-center bg-[#111] rounded-2xl px-5 py-5 mb-6 relative
       transition-all duration-300 ease-in-out hover:bg-gray-700 hover:rounded-3xl animate-fadeIn">
@@ -103,6 +130,36 @@ const Song: React.FC<SongProps> = ({
         )}
         <span className="text-white text-sm transition-opacity duration-300 hover:opacity-80 w-7">{dislikes}</span>
       </div>
+
+      {/* Owner menu */}
+      {isOwner && (
+        <div className="relative ml-4" ref={menuRef}>
+          <button
+            className="p-2 rounded-full hover:bg-gray-800 focus:outline-none"
+            onClick={() => setMenuOpen((open) => !open)}
+            aria-label="Song actions"
+            type="button"
+          >
+            <EllipsisVerticalIcon className="w-7 h-7 text-white" />
+          </button>
+          {menuOpen && (
+            <div className="absolute right-0 mt-2 w-40 bg-white rounded-xl shadow-lg z-50 py-2">
+              <button
+                className="block w-full text-left px-4 py-2 text-black hover:bg-gray-100 font-medium"
+                onClick={() => { setMenuOpen(false); onPause && onPause(); }}
+              >Pause Song</button>
+              <button
+                className="block w-full text-left px-4 py-2 text-black hover:bg-gray-100 font-medium"
+                onClick={() => { setMenuOpen(false); onSkip && onSkip(); }}
+              >Skip Song</button>
+              <button
+                className="block w-full text-left px-4 py-2 text-red-600 hover:bg-gray-100 font-medium"
+                onClick={() => { setMenuOpen(false); onDelete && onDelete(); }}
+              >Delete Song</button>
+            </div>
+          )}
+        </div>
+      )}
     </li>
   );
 };

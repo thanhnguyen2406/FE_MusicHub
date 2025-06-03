@@ -3,6 +3,7 @@ import Header from './components/common/Header'
 import Footer from './components/common/Footer'
 import { useLocation, Outlet } from 'react-router-dom'
 import 'react-toastify/dist/ReactToastify.css';
+import UserInfoLoader from './components/common/UserInfoLoader';
 
 function AppContent() {
   const location = useLocation();
@@ -13,6 +14,7 @@ function AppContent() {
 
   return (
     <div className="app-container min-h-screen flex flex-col" style={{ height: '100vh' }}>
+      <UserInfoLoader />
       {!isLoginPage && !isRegisterPage && <Header />}
 
       <main className="main-content flex-1 bg-[#111]">

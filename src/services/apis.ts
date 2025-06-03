@@ -9,6 +9,7 @@ export const API_PATHS = {
   AUTH: '/auth',
   USERS: '/users',
   CHANNELS: '/channels',
+  SONGS: '/songs',
   TEST: '/test',
 } as const;
 

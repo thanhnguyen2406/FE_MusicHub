@@ -1,10 +1,12 @@
 import {
   RSocketClient,
   JsonSerializers,
+  encodeCompositeMetadata,
+  encodeRoute,
+  WellKnownMimeType,
 } from 'rsocket-core';
 import RSocketWebSocketClient from 'rsocket-websocket-client';
 import { RSOCKET_URL } from './constants';
-import { encodeCompositeMetadata, WellKnownMimeType } from 'rsocket-core';
 import { Buffer } from 'buffer';
 import { getAuthHeaders } from '../utils/apiHeaders';
 
@@ -19,7 +21,7 @@ export const getRSocket = async () => {
       keepAlive: 30000,
       lifetime: 180000,
       dataMimeType: 'application/json',
-      metadataMimeType: 'message/x.rsocket.composite-metadata.v0',
+      metadataMimeType: WellKnownMimeType.MESSAGE_RSOCKET_COMPOSITE_METADATA.string,
     },
     transport: new RSocketWebSocketClient({ url: RSOCKET_URL }),
   });
@@ -39,29 +41,25 @@ interface RSocketPayload<T = any> {
   metadata?: Uint8Array;
 }
 
-/**
- * rsocketBaseQuery dùng để gọi các route RSocket requestResponse
- * @param param0 route: string tên route, data: payload gửi (object hoặc null)
- */
 export const rsocketBaseQuery = async ({ route, data }: { route: string; data: any }) => {
   const rsocket = await getRSocket();
 
-  const routingMetadata = Buffer.from(route, 'utf8');
+  const routingMetadata = encodeRoute(route);
+
   const authHeaders = getAuthHeaders();
-  const authMetadata = Buffer.from(JSON.stringify(authHeaders));
-  
+  const token = authHeaders?.Authorization?.replace('Bearer ', '') ?? '';
+  const authMetadata = Buffer.from(token, 'utf-8');
+
   const metadata = encodeCompositeMetadata([
-    [WellKnownMimeType.ROUTING, routingMetadata],
-    [WellKnownMimeType.APPLICATION_JSON, authMetadata]
+    [WellKnownMimeType.MESSAGE_RSOCKET_ROUTING, routingMetadata],
+    [WellKnownMimeType.MESSAGE_RSOCKET_AUTHENTICATION, authMetadata],
   ]);
 
   return new Promise((resolve, reject) => {
     rsocket
       .requestResponse({
-        data: { payload: data },
+        data,
         metadata,
-        dataMimeType: 'application/json',
-        metadataMimeType: 'message/x.rsocket.composite-metadata.v0',
       })
       .subscribe({
         onComplete: (payload: RSocketPayload) => {

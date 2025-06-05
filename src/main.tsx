@@ -38,6 +38,10 @@ const router = createBrowserRouter([
         element: <Channel />,
       },
       {
+        path: 'channels/:channelId',
+        element: <Channel />,
+      },
+      {
         path: 'search',
         element: <Search />,
       },

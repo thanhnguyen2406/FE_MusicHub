@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
+import { useParams } from 'react-router-dom';
 import Song from './Song';
 import Member from './Member';
 import defaultAvatar from '../../../../assets/defaultAvatar.png';
@@ -8,14 +9,20 @@ import {
   useVoteSongMutation, 
   useLeaveChannelMutation, 
   useTransferOwnershipMutation,
-  useDeleteChannelMutation 
+  useDeleteChannelMutation,
+  useSearchMembersQuery,
+  useKickMemberMutation,
+  useUpdateChannelMutation
 } from '../../../../redux/services/channelApi';
 import { useAddSongMutation, useDeleteSongMutation } from '../../../../redux/services/songApi';
-import { PlusCircleIcon } from '@heroicons/react/24/outline';
+import { PlusCircleIcon, MagnifyingGlassIcon } from '@heroicons/react/24/outline';
 import AddSongForm from './AddSongForm';
 import LeaveChannelDialog from './LeaveChannelDialog';
 import TransferOwnershipDialog from './TransferOwnershipDialog';
+import OwnerLeaveDialog from './OwnerLeaveDialog';
+import UpdateChannelForm from './UpdateChannelForm';
 import { API_PATHS } from '../../../../services/apis';
+import { useAppSelector } from '../../../../redux/store';
 
 interface JoinedChannelProps {
   channel: {
@@ -29,6 +36,8 @@ interface JoinedChannelProps {
     isPrivate: boolean;
     members: ChannelMember[];
     isOwner: boolean;
+    url?: string;
+    maxUsers?: number;
   };
   playlist: Array<{
     id: string;
@@ -50,18 +59,33 @@ const JoinedChannel: React.FC<JoinedChannelProps> = ({
   onSongAdded,
   onLeaveChannel
 }) => {
+  const { channelId } = useParams<{ channelId: string }>();
   const [likedSongs, setLikedSongs] = useState<string[]>([]);
   const [dislikedSongs, setDislikedSongs] = useState<string[]>([]);
   const [isAddSongFormOpen, setIsAddSongFormOpen] = useState(false);
+  const [isUpdateChannelFormOpen, setIsUpdateChannelFormOpen] = useState(false);
   const [isLeaveDialogOpen, setIsLeaveDialogOpen] = useState(false);
+  const [isOwnerLeaveDialogOpen, setIsOwnerLeaveDialogOpen] = useState(false);
   const [isTransferDialogOpen, setIsTransferDialogOpen] = useState(false);
+  const [selectedMemberId, setSelectedMemberId] = useState<string>('');
   const [playlist, setPlaylist] = useState(initialPlaylist);
+  const [memberSearchQuery, setMemberSearchQuery] = useState('');
+  const userInfo = useAppSelector(state => state.user.userInfo);
   const [voteSong] = useVoteSongMutation();
   const [addSong] = useAddSongMutation();
   const [deleteSong] = useDeleteSongMutation();
   const [leaveChannel] = useLeaveChannelMutation();
   const [deleteChannel] = useDeleteChannelMutation();
   const [transferOwnership] = useTransferOwnershipMutation();
+  const [kickMember] = useKickMemberMutation();
+  const [updateChannel] = useUpdateChannelMutation();
+
+  const { data: searchResults, isLoading: isSearching } = useSearchMembersQuery(
+    { channelId: channel.id, searchQuery: memberSearchQuery },
+    { skip: !memberSearchQuery }
+  );
+
+  const displayedMembers = memberSearchQuery ? searchResults || [] : channel.members;
 
   const handleLike = async (songId: string) => {
     try {
@@ -158,12 +182,47 @@ const JoinedChannel: React.FC<JoinedChannelProps> = ({
     try {
       await transferOwnership({ channelId: channel.id, newOwnerId }).unwrap();
       setIsTransferDialogOpen(false);
-      setIsLeaveDialogOpen(false);
-      onLeaveChannel();
+      setIsOwnerLeaveDialogOpen(false);
+      if (isOwnerLeaveDialogOpen) {
+        onLeaveChannel();
+      }
     } catch (error) {
       console.error('Failed to transfer ownership:', error);
     }
   };
+
+  const handleKickMember = async (memberId: string) => {
+    try {
+      await kickMember({ channelId: channel.id, memberId }).unwrap();
+    } catch (error) {
+      console.error('Failed to kick member:', error);
+    }
+  };
+
+  const handleUpdateChannel = async (data: {
+    name: string;
+    url: string;
+    tagList: string[];
+    description: string;
+    maxUsers: number;
+    allowOthersToManageSongs: boolean;
+    allowOthersToControlPlayback: boolean;
+    password?: string;
+  }) => {
+    try {
+      await updateChannel({ channelId: channel.id, ...data }).unwrap();
+      setIsUpdateChannelFormOpen(false);
+      onSongAdded(); // Refresh channel data
+    } catch (error) {
+      console.error('Failed to update channel:', error);
+    }
+  };
+
+  const filteredMembers = useMemo(() => {
+    return channel.members.filter(member =>
+      member.displayName.toLowerCase().includes(memberSearchQuery.toLowerCase())
+    );
+  }, [channel.members, memberSearchQuery]);
 
   return (
     <main className="flex flex-1 bg-[#111] h-full flex-col md:flex-row">
@@ -200,13 +259,24 @@ const JoinedChannel: React.FC<JoinedChannelProps> = ({
             {channel.moodTags.map(tag => `#${tag}`).join(' ')}
           </div>
           {channel.isOwner && (
-            <button
-              className="flex items-center gap-2 bg-white hover:bg-gray-100 text-black px-4 py-2 rounded-lg transition-colors duration-200 font-semibold"
-              onClick={() => setIsAddSongFormOpen(true)}
-            >
-              <PlusCircleIcon className="w-5 h-5 stroke-2" />
-              <span>Add Song</span>
-            </button>
+            <div className="flex gap-3">
+              <button
+                className="flex items-center gap-2 bg-white hover:bg-gray-100 text-black px-4 py-2 rounded-lg transition-colors duration-200 font-semibold"
+                onClick={() => setIsAddSongFormOpen(true)}
+              >
+                <PlusCircleIcon className="w-5 h-5 stroke-2" />
+                <span>Add Song</span>
+              </button>
+              <button
+                className="flex items-center gap-2 bg-orange-500 hover:bg-orange-600 text-white px-4 py-2 rounded-lg transition-colors duration-200 font-semibold"
+                onClick={() => setIsUpdateChannelFormOpen(true)}
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                  <path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z" />
+                </svg>
+                <span>Update Channel</span>
+              </button>
+            </div>
           )}
         </div>
         <p className="text-gray-300 text-base leading-relaxed mb-2 text-left pl-4">
@@ -238,18 +308,44 @@ const JoinedChannel: React.FC<JoinedChannelProps> = ({
       </section>
       <aside className="w-56 md:w-72 min-w-[180px] md:min-w-[220px] bg-[#181818] border-l-2 border-[#222] p-6 h-full flex flex-col">
         <h3 className="text-white text-lg font-semibold mb-2">Members</h3>
+        
+        <div className="relative mb-4">
+          <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+            <MagnifyingGlassIcon className="h-5 w-5 text-gray-400" />
+          </div>
+          <input
+            type="text"
+            className="block w-full pl-10 pr-3 py-2 bg-[#222] border border-[#333] rounded-full text-sm text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            placeholder="Search members..."
+            value={memberSearchQuery}
+            onChange={(e) => setMemberSearchQuery(e.target.value)}
+          />
+        </div>
+
         <ul className="flex flex-col gap-4 flex-1 overflow-y-auto">
-          {(channel.members || []).map((member, idx) => (
-            <li key={idx} className="flex items-center justify-between">
-              <Member 
-                name={member.displayName} 
-                avatar={member.avatarUrl || defaultAvatar}
-              />
-              {member.role === 'OWNER' && (
-                <span className="ml-2 text-yellow-400 text-xl" title="Owner">👑</span>
-              )}
-            </li>
-          ))}
+          {isSearching ? (
+            <li className="text-gray-400 text-center">Searching...</li>
+          ) : displayedMembers.length === 0 ? (
+            <li className="text-gray-400 text-center">No members found</li>
+          ) : (
+            displayedMembers.map((member) => (
+              <li key={member.userId} className="flex items-center justify-between">
+                <Member 
+                  userId={member.userId}
+                  name={member.displayName} 
+                  avatar={member.avatarUrl || defaultAvatar}
+                  role={member.role}
+                  isOwner={channel.isOwner}
+                  currentUserId={userInfo?.id || ''}
+                  onKick={handleKickMember}
+                  onTransferOwnership={() => {
+                    setIsTransferDialogOpen(true);
+                    setSelectedMemberId(member.userId);
+                  }}
+                />
+              </li>
+            ))
+          )}
         </ul>
         <button
           onClick={() => setIsLeaveDialogOpen(true)}
@@ -272,15 +368,46 @@ const JoinedChannel: React.FC<JoinedChannelProps> = ({
         isOwner={channel.isOwner}
         onTransferOwnership={() => {
           setIsLeaveDialogOpen(false);
-          setIsTransferDialogOpen(true);
+          setIsOwnerLeaveDialogOpen(true);
         }}
       />
 
       <TransferOwnershipDialog
         isOpen={isTransferDialogOpen}
-        onClose={() => setIsTransferDialogOpen(false)}
+        onClose={() => {
+          setIsTransferDialogOpen(false);
+          setSelectedMemberId('');
+        }}
         onConfirm={handleTransferOwnership}
-        members={channel.members.filter(member => member.role === 'MEMBER')}
+        members={channel.members}
+        selectedMemberId={selectedMemberId}
+      />
+
+      <OwnerLeaveDialog
+        isOpen={isOwnerLeaveDialogOpen}
+        onClose={() => {
+          setIsOwnerLeaveDialogOpen(false);
+          setSelectedMemberId('');
+        }}
+        onConfirm={handleTransferOwnership}
+        members={channel.members}
+        channelId={channel.id}
+      />
+
+      <UpdateChannelForm
+        isOpen={isUpdateChannelFormOpen}
+        onClose={() => setIsUpdateChannelFormOpen(false)}
+        onSubmit={handleUpdateChannel}
+        initialData={{
+          name: channel.name,
+          url: channel.url || '',
+          tagList: channel.moodTags,
+          description: channel.description,
+          maxUsers: channel.maxUsers || 10,
+          allowOthersToManageSongs: channel.canManageSongs,
+          allowOthersToControlPlayback: channel.canPlayback,
+          isPrivate: channel.isPrivate
+        }}
       />
     </main>
   );

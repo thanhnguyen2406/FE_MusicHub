@@ -7,7 +7,7 @@ import UserInfoLoader from './components/common/UserInfoLoader';
 
 function AppContent() {
   const location = useLocation();
-  const isChannelPage = location.pathname === '/channels';
+  const isChannelPage = location.pathname.startsWith('/channels');
   const isLoginPage = location.pathname === '/login';
   const isRegisterPage = location.pathname === '/register';
   const isProfilePage = location.pathname === '/profile';

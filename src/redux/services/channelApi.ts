@@ -6,6 +6,7 @@ import type { PaginationParams } from '../../utils/apiParams';
 import { getPaginationParams } from '../../utils/apiParams';
 
 export interface ChannelMember {
+  userId: string;
   displayName: string;
   avatarUrl: string | null;
   role: 'MEMBER' | 'OWNER';
@@ -37,6 +38,7 @@ export interface ChannelDetails {
   allowOthersToControlPlayback: boolean;
   isLocked: boolean;
   members: Array<{
+    userId: string;
     displayName: string;
     avatarUrl: string | null;
     role: 'MEMBER' | 'OWNER';
@@ -192,13 +194,52 @@ export const channelApi = createApi({
 
     transferOwnership: builder.mutation<ResponseAPI<void>, { channelId: string; newOwnerId: string }>({
       query: ({ channelId, newOwnerId }) => ({
-        url: `${API_PATHS.CHANNELS}/${channelId}/transfer-ownership`,
+        url: `${API_PATHS.CHANNELS}/${channelId}/transfer-ownership?newOwnerId=${newOwnerId}`,
         method: 'POST',
-        body: { newOwnerId },
         headers: getAuthHeaders(),
       }),
       transformResponse,
       invalidatesTags: ['Channel'],
+    }),
+
+    searchMembers: builder.query<ResponseAPI<ChannelMember[]>, { channelId: string; searchQuery?: string }>({
+      query: ({ channelId, searchQuery }) => ({
+        url: `${API_PATHS.CHANNELS}/${channelId}/members${searchQuery ? `?search=${searchQuery}` : ''}`,
+        method: 'GET',
+        headers: getAuthHeaders(),
+      }),
+      transformResponse,
+    }),
+
+    kickMember: builder.mutation<ResponseAPI<void>, { channelId: string; memberId: string }>({
+      query: ({ channelId, memberId }) => ({
+        url: `${API_PATHS.CHANNELS}/${channelId}/members/${memberId}/kick`,
+        method: 'POST',
+        headers: getAuthHeaders(),
+      }),
+      transformResponse,
+      invalidatesTags: ['Channel'],
+    }),
+
+    updateChannel: builder.mutation<ResponseAPI<void>, {
+      channelId: string;
+      name: string;
+      url: string;
+      tagList: string[];
+      description: string;
+      maxUsers: number;
+      allowOthersToManageSongs: boolean;
+      allowOthersToControlPlayback: boolean;
+      password?: string;
+    }>({
+      query: ({ channelId, ...data }) => ({
+        url: `${API_PATHS.CHANNELS}/${channelId}`,
+        method: 'PUT',
+        body: data,
+        headers: getAuthHeaders()
+      }),
+      transformResponse,
+      invalidatesTags: ['Channel']
     }),
   }),
 });
@@ -214,4 +255,7 @@ export const {
   useLeaveChannelMutation,
   useDeleteChannelMutation,
   useTransferOwnershipMutation,
+  useSearchMembersQuery,
+  useKickMemberMutation,
+  useUpdateChannelMutation,
 } = channelApi; 

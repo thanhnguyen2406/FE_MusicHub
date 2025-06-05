@@ -1,20 +1,15 @@
 import React, { useEffect, useState } from 'react';
+import { useNavigate, useParams } from 'react-router-dom';
 import JoinableChannels from './joinable/JoinableChannels';
 import JoinedChannel from './joined/JoinedChannel';
 import songThumbnail from '../../../assets/songThumbnail.jpg';
-import type { ChannelDetails as ApiChannelDetails, ChannelSong } from '../../../redux/services/channelApi';
+import type { ChannelDetails as ApiChannelDetails, ChannelSong, ChannelMember } from '../../../redux/services/channelApi';
 import { 
-  useGetMyChannelQuery, 
+  useGetMyChannelQuery,
   useGetChannelByIdQuery,
   useJoinChannelMutation
 } from '../../../redux/services/channelApi';
 import { useAppSelector } from '../../../redux/store';
-
-interface ChannelMember {
-  displayName: string;
-  avatarUrl: string | null;
-  role: 'MEMBER' | 'OWNER';
-}
 
 interface ChannelDetails extends Omit<ApiChannelDetails, 'songs'> {
   songs: ChannelSong[];
@@ -41,23 +36,24 @@ interface CurrentChannel {
     dislikes: number;
   }>;
   isOwner: boolean;
+  url?: string;
+  maxUsers?: number;
 }
 
 const Channel: React.FC = () => {
+  const navigate = useNavigate();
+  const { channelId } = useParams<{ channelId: string }>();
   const [hasJoinedChannel, setHasJoinedChannel] = useState(false);
   const [currentChannel, setCurrentChannel] = useState<CurrentChannel | null>(null);
-  const [myChannelId, setMyChannelId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const userInfo = useAppSelector(state => state.user.userInfo);
 
   const token = localStorage.getItem('access_token');
 
-  const { data: myChannelData, error: myChannelError } = useGetMyChannelQuery(undefined, {
-    skip: !token || !hasJoinedChannel
-  });
+  const { data: myChannelData, error: myChannelError } = useGetMyChannelQuery();
 
-  const { data: channelDetails, error: channelDetailsError, refetch: refetchChannel } = useGetChannelByIdQuery(myChannelId || '', {
-    skip: !myChannelId,
+  const { data: channelDetails, error: channelDetailsError, refetch: refetchChannel } = useGetChannelByIdQuery(channelId || '', {
+    skip: !channelId,
     pollingInterval: 2000
   });
 
@@ -65,24 +61,9 @@ const Channel: React.FC = () => {
 
   useEffect(() => {
     if (myChannelData?.data) {
-      setMyChannelId(myChannelData.data);
-      setHasJoinedChannel(true);
-      setError(null);
-    } else if (myChannelData === null) {
-      setHasJoinedChannel(false);
-      setMyChannelId(null);
+      navigate(`/channels/${myChannelData.data}`);
     }
-  }, [myChannelData]);
-
-  useEffect(() => {
-    if (myChannelError) {
-      console.error('Failed to fetch my channel:', myChannelError);
-      if (!hasJoinedChannel) {
-        setError('No channel found. Join or create a channel to continue.');
-      }
-      setHasJoinedChannel(false);
-    }
-  }, [myChannelError, hasJoinedChannel]);
+  }, [myChannelData, navigate]);
 
   useEffect(() => {
     if (channelDetails?.data) {
@@ -98,6 +79,8 @@ const Channel: React.FC = () => {
         isPrivate: channelDetails.data.isLocked,
         members: channelDetails.data.members,
         isOwner,
+        url: channelDetails.data.url,
+        maxUsers: channelDetails.data.maxUsers,
         playlist: (channelDetails.data.songs || []).map((song: ChannelSong) => {
           const minutes = Math.floor(song.duration / 60);
           const seconds = song.duration % 60;
@@ -114,6 +97,7 @@ const Channel: React.FC = () => {
           };
         }),
       });
+      setHasJoinedChannel(true);
       setError(null);
     }
   }, [channelDetails, userInfo]);
@@ -130,24 +114,15 @@ const Channel: React.FC = () => {
       console.log('Attempting to join channel with ID:', channelId);
       const result = await joinChannel(channelId).unwrap();
       console.log('Join channel result:', result);
-      setHasJoinedChannel(true);
-      setMyChannelId(channelId);
-      setError(null);
-      setTimeout(() => {
-        refetchChannel();
-      }, 1000);
+      navigate(`/channels/${channelId}`);
     } catch (error) {
       console.error('Failed to join channel:', error);
       setError('Failed to join channel. Please try again.');
-      setHasJoinedChannel(false);
-      setMyChannelId(null);
     }
   };
 
   const handleLeaveChannel = () => {
-    setHasJoinedChannel(false);
-    setMyChannelId(null);
-    setCurrentChannel(null);
+    navigate('/channels');
   };
 
   if (!token) {
@@ -168,7 +143,7 @@ const Channel: React.FC = () => {
     );
   }
 
-  if (!hasJoinedChannel || !myChannelData?.data) {
+  if (!hasJoinedChannel || !channelDetails?.data) {
     return <JoinableChannels onJoinChannel={handleJoinChannel} />;
   }
 

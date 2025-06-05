@@ -1,7 +1,7 @@
 import React from 'react';
+import 'react-toastify/dist/ReactToastify.css';
 import { useProfileForm } from './useProfileForm';
 import ProfileForm from './ProfileForm';
-import { ToastContainer } from 'react-toastify';
 
 const Profile: React.FC = () => {
   const {
@@ -16,11 +16,13 @@ const Profile: React.FC = () => {
     handleCancel,
   } = useProfileForm();
 
-  if (!editedUser || userLoading) return <div className="text-white p-10">Loading profile...</div>;
+  if (userLoading || !editedUser) {
+    return <div>Loading...</div>;
+  }
 
   return (
-    <div className="min-h-screen bg-[#181818] flex flex-col items-center justify-center py-10">
-      <ToastContainer />
+    <div className="container mx-auto px-4 py-8">
+      <h1 className="text-3xl font-bold text-white mb-8">Profile Settings</h1>
       <ProfileForm
         editedUser={editedUser}
         avatarPreview={avatarPreview}

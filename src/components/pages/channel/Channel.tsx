@@ -40,6 +40,12 @@ interface CurrentChannel {
   maxUsers?: number;
 }
 
+interface ApiError {
+  code: number;
+  message: string;
+  data: any;
+}
+
 const Channel: React.FC = () => {
   const navigate = useNavigate();
   const { channelId } = useParams<{ channelId: string }>();
@@ -50,10 +56,10 @@ const Channel: React.FC = () => {
 
   const token = localStorage.getItem('access_token');
 
-  const { data: myChannelData, error: myChannelError } = useGetMyChannelQuery();
+  const { data: myChannelData, error: myChannelError, refetch: refetchMyChannel } = useGetMyChannelQuery();
 
   const { data: channelDetails, error: channelDetailsError, refetch: refetchChannel } = useGetChannelByIdQuery(channelId || '', {
-    skip: !channelId,
+    skip: !channelId || !hasJoinedChannel,
     pollingInterval: 2000
   });
 
@@ -61,7 +67,11 @@ const Channel: React.FC = () => {
 
   useEffect(() => {
     if (myChannelData?.data) {
+      setHasJoinedChannel(true);
       navigate(`/channels/${myChannelData.data}`);
+    } else if (myChannelData === null) {
+      setHasJoinedChannel(false);
+      setCurrentChannel(null);
     }
   }, [myChannelData, navigate]);
 
@@ -105,15 +115,20 @@ const Channel: React.FC = () => {
   useEffect(() => {
     if (channelDetailsError) {
       console.error('Channel fetch error:', channelDetailsError);
-      setError('Failed to receive channel updates. Please try refreshing the page.');
+      const error = channelDetailsError as ApiError;
+      if (error.code === 500) {
+        setHasJoinedChannel(false);
+        setCurrentChannel(null);
+      } else {
+        setError('Failed to receive channel updates. Please try refreshing the page.');
+      }
     }
   }, [channelDetailsError]);
 
   const handleJoinChannel = async (channelId: string) => {
     try {
-      console.log('Attempting to join channel with ID:', channelId);
       const result = await joinChannel(channelId).unwrap();
-      console.log('Join channel result:', result);
+      setHasJoinedChannel(true);
       navigate(`/channels/${channelId}`);
     } catch (error) {
       console.error('Failed to join channel:', error);
@@ -121,8 +136,15 @@ const Channel: React.FC = () => {
     }
   };
 
-  const handleLeaveChannel = () => {
-    navigate('/channels');
+  const handleLeaveChannel = async () => {
+    try {
+      setHasJoinedChannel(false);
+      setCurrentChannel(null);
+      setError(null);
+      navigate('/channels');
+    } catch (error) {
+      console.error('Error during leave channel navigation:', error);
+    }
   };
 
   if (!token) {

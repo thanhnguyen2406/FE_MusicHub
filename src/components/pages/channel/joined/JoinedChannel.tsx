@@ -1,5 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { useParams } from 'react-router-dom';
+import { toast } from 'react-toastify';
 import Song from './Song';
 import Member from './Member';
 import defaultAvatar from '../../../../assets/defaultAvatar.png';
@@ -85,7 +86,7 @@ const JoinedChannel: React.FC<JoinedChannelProps> = ({
     { skip: !memberSearchQuery }
   );
 
-  const displayedMembers = memberSearchQuery ? searchResults || [] : channel.members;
+  const displayedMembers = memberSearchQuery ? (searchResults?.data || []) : channel.members;
 
   const handleLike = async (songId: string) => {
     try {
@@ -172,6 +173,8 @@ const JoinedChannel: React.FC<JoinedChannelProps> = ({
       } else {
         await leaveChannel(channel.id).unwrap();
       }
+      // Wait for a short delay to ensure the API call completes
+      await new Promise(resolve => setTimeout(resolve, 100));
       onLeaveChannel();
     } catch (error) {
       console.error('Failed to leave channel:', error);
@@ -216,6 +219,18 @@ const JoinedChannel: React.FC<JoinedChannelProps> = ({
     } catch (error) {
       console.error('Failed to update channel:', error);
     }
+  };
+
+  const handleTransferOwnershipClick = (memberId: string) => {
+    const otherMembers = channel.members.filter(member => member.role === 'MEMBER');
+    if (otherMembers.length === 0) {
+      toast.warning('There are no other members to transfer ownership to.', {
+        position: 'top-right',
+      });
+      return;
+    }
+    setIsTransferDialogOpen(true);
+    setSelectedMemberId(memberId);
   };
 
   const filteredMembers = useMemo(() => {
@@ -338,10 +353,7 @@ const JoinedChannel: React.FC<JoinedChannelProps> = ({
                   isOwner={channel.isOwner}
                   currentUserId={userInfo?.id || ''}
                   onKick={handleKickMember}
-                  onTransferOwnership={() => {
-                    setIsTransferDialogOpen(true);
-                    setSelectedMemberId(member.userId);
-                  }}
+                  onTransferOwnership={() => handleTransferOwnershipClick(member.userId)}
                 />
               </li>
             ))
@@ -367,6 +379,13 @@ const JoinedChannel: React.FC<JoinedChannelProps> = ({
         onConfirm={handleLeaveChannel}
         isOwner={channel.isOwner}
         onTransferOwnership={() => {
+          const otherMembers = channel.members.filter(member => member.role === 'MEMBER');
+          if (otherMembers.length === 0) {
+            toast.warning('There are no other members to transfer ownership to.', {
+              position: 'top-right',
+            });
+            return;
+          }
           setIsLeaveDialogOpen(false);
           setIsOwnerLeaveDialogOpen(true);
         }}

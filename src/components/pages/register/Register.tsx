@@ -1,5 +1,4 @@
 import React from 'react';
-import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import { useRegisterForm } from './useRegisterForm';
 import RegisterForm from './RegisterForm';
@@ -22,7 +21,6 @@ const Register: React.FC = () => {
 
   return (
     <div className="flex flex-row w-full h-screen">
-      <ToastContainer />
       <div className="basis-[60%] bg-gradient-to-br from-purple-600 to-blue-500 flex items-center justify-center">
         <div className="text-white text-center">
           <h1 className="text-4xl font-bold mb-4">Join MoodMix</h1>

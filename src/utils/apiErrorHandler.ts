@@ -12,11 +12,19 @@ interface FetchError {
   data: { message?: string };
 }
 
-export const handleApiError = (error: any): { error: FetchError } => {
+const SKIP_TOAST_ENDPOINTS = [
+  '/channels/my-channel',
+  '/channels/'
+];
+
+export const handleApiError = (error: any, url?: string): { error: FetchError } => {
   const errorMessage = error?.message || 'Network error occurred';
-  toast.error(errorMessage, {
-    position: 'top-right',
-  });
+  
+  if (!url || !SKIP_TOAST_ENDPOINTS.some(endpoint => url.includes(endpoint))) {
+    toast.error(errorMessage, {
+      position: 'top-right',
+    });
+  }
   
   return {
     error: {
@@ -28,21 +36,25 @@ export const handleApiError = (error: any): { error: FetchError } => {
   };
 };
 
-export const handleApiResponse = (result: any) => {
+export const handleApiResponse = (result: any, url?: string) => {
   if (result.error) {
     const errorData = (result.error as FetchError).data;
-    toast.error(errorData?.message || 'An error occurred', {
-      position: 'top-right',
-    });
+    if (!url || !SKIP_TOAST_ENDPOINTS.some(endpoint => url.includes(endpoint))) {
+      toast.error(errorData?.message || 'An error occurred', {
+        position: 'top-right',
+      });
+    }
     return result;
   }
 
   if (result.data) {
     const response = result.data as ResponseAPI<any>;
     if (response.code >= 400) {
-      toast.error(response.message || 'An unexpected error occurred', {
-        position: 'top-right',
-      });
+      if (!url || !SKIP_TOAST_ENDPOINTS.some(endpoint => url.includes(endpoint))) {
+        toast.error(response.message || 'An unexpected error occurred', {
+          position: 'top-right',
+        });
+      }
       return {
         error: {
           status: response.code,
@@ -61,9 +73,9 @@ export const createErrorHandler = (baseQuery: BaseQueryFn): BaseQueryFn => {
   return async (args, api, extraOptions) => {
     try {
       const result = await baseQuery(args, api, extraOptions);
-      return handleApiResponse(result);
+      return handleApiResponse(result, args.url);
     } catch (error: any) {
-      return handleApiError(error);
+      return handleApiError(error, args.url);
     }
   };
 }; 
